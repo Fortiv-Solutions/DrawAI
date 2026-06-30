@@ -172,18 +172,21 @@ async function exportPdf(opts: {
   const pageH = pdf.internal.pageSize.getHeight();
   const margin = 28;
 
-  // Outer border
-  pdf.setDrawColor(60);
-  pdf.setLineWidth(1);
-  pdf.rect(margin, margin, pageW - margin * 2, pageH - margin * 2);
-
-  // Drawing snapshot fills the main area (if available)
-  const snap = await snapshotCanvas?.();
+  // 1. Draw premium light grey background on the entire page
+  pdf.setFillColor(241, 245, 249); // Slate-100 (#f1f5f9)
+  pdf.rect(0, 0, pageW, pageH, "F");
 
   const innerX = margin + 8;
   const innerY = margin + 8;
   const innerW = pageW - margin * 2 - 16;
   const innerH = pageH - margin * 2 - 110; // reserve bottom for title block
+
+  // 2. Draw white card background for the drawing viewport
+  pdf.setFillColor(255, 255, 255);
+  pdf.rect(innerX, innerY, innerW, innerH, "F");
+
+  // Drawing snapshot fills the main area (if available)
+  const snap = await snapshotCanvas?.();
 
   if (!snap) {
     throw new Error("Drawing preview is not ready yet. Wait for the CAD view to finish loading, then export again.");
@@ -230,19 +233,28 @@ async function exportPdf(opts: {
     throw new Error("Could not embed the drawing snapshot in the PDF.");
   }
 
-  // Title block (bottom strip)
+  // Draw thin border around the drawing viewport
+  pdf.setDrawColor(203, 213, 225); // Slate-300 (#cbd5e1)
+  pdf.setLineWidth(1);
+  pdf.rect(innerX, innerY, innerW, innerH, "S");
+
+  // 3. Draw white card background for the Title block (bottom strip)
   const tbY = innerY + innerH + 8;
   const tbH = pageH - margin - tbY - 8;
-  pdf.setDrawColor(40);
-  pdf.setLineWidth(0.8);
-  pdf.rect(innerX, tbY, innerW, tbH);
+  pdf.setFillColor(255, 255, 255);
+  pdf.rect(innerX, tbY, innerW, tbH, "F");
+
+  // Draw thin border around the title block
+  pdf.setDrawColor(203, 213, 225); // Slate-300 (#cbd5e1)
+  pdf.setLineWidth(1);
+  pdf.rect(innerX, tbY, innerW, tbH, "S");
 
   const qrSize = Math.min(tbH - 12, 88);
   const qrX = innerX + innerW - qrSize - 8;
   const qrY = tbY + (tbH - qrSize) / 2;
 
   // Text block
-  pdf.setTextColor(20);
+  pdf.setTextColor(15, 23, 42); // Slate-900 (#0f172a)
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(14);
   pdf.text(drawing.sheetNo, innerX + 12, tbY + 22);
@@ -250,7 +262,7 @@ async function exportPdf(opts: {
   pdf.setFontSize(12);
   pdf.text(drawing.title, innerX + 12, tbY + 40);
   pdf.setFontSize(9);
-  pdf.setTextColor(90);
+  pdf.setTextColor(71, 85, 105); // Slate-600 (#475569)
   pdf.text(projectName, innerX + 12, tbY + 56);
   pdf.text(
     `${drawing.discipline} · Rev ${revision.rev} · ${revision.status.toUpperCase()} · ${new Date(revision.createdAt).toLocaleDateString()}`,
@@ -259,15 +271,26 @@ async function exportPdf(opts: {
   );
 
   if (includeQr) {
-    const qr = await generateQrDataUrl(drawing.id, 480, revision.id);
-    pdf.setDrawColor(40);
+    const qr = await generateQrDataUrl(drawing.id, 480, revision.id, {
+      sheetNo: drawing.sheetNo,
+      title: drawing.title,
+      projectName: projectName,
+      rev: revision.rev,
+      status: revision.status,
+    });
+    pdf.setDrawColor(226, 232, 240); // Slate-200 (#e2e8f0)
     pdf.setLineWidth(0.5);
     pdf.rect(qrX - 4, qrY - 4, qrSize + 8, qrSize + 8);
     pdf.addImage(qr, "PNG", qrX, qrY, qrSize, qrSize, undefined, "NONE");
     pdf.setFontSize(7);
-    pdf.setTextColor(60);
+    pdf.setTextColor(100);
     pdf.text("Scan to verify revision", qrX, qrY + qrSize + 10);
   }
+
+  // Draw thin border around the very edge of the page margin
+  pdf.setDrawColor(203, 213, 225); // Slate-300
+  pdf.setLineWidth(1);
+  pdf.rect(margin, margin, pageW - margin * 2, pageH - margin * 2, "S");
 
   pdf.save(`${baseName(revision.fileName)}-Rev${revision.rev}.pdf`);
 }

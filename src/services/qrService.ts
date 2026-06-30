@@ -8,13 +8,43 @@ import QRCode from "qrcode";
  * the *printed* revision so the verification page can compare it against the
  * latest approved revision in DrawAI.
  */
-export function scanUrl(drawingId: string, revisionId?: string): string {
+export function scanUrl(
+  drawingId: string, 
+  revisionId?: string,
+  metadata?: {
+    sheetNo: string;
+    title: string;
+    projectName: string;
+    rev: string;
+    status: string;
+  }
+): string {
   const base = typeof window === "undefined" ? "" : window.location.origin;
-  return revisionId ? `${base}/scan/${drawingId}/${revisionId}` : `${base}/scan/${drawingId}`;
+  const path = revisionId ? `${base}/scan/${drawingId}/${revisionId}` : `${base}/scan/${drawingId}`;
+  if (!metadata) return path;
+  const params = new URLSearchParams({
+    sn: metadata.sheetNo,
+    t: metadata.title,
+    p: metadata.projectName,
+    r: metadata.rev,
+    s: metadata.status,
+  });
+  return `${path}?${params.toString()}`;
 }
 
-export async function generateQrDataUrl(drawingId: string, size = 256, revisionId?: string): Promise<string> {
-  return QRCode.toDataURL(scanUrl(drawingId, revisionId), {
+export async function generateQrDataUrl(
+  drawingId: string, 
+  size = 256, 
+  revisionId?: string,
+  metadata?: {
+    sheetNo: string;
+    title: string;
+    projectName: string;
+    rev: string;
+    status: string;
+  }
+): Promise<string> {
+  return QRCode.toDataURL(scanUrl(drawingId, revisionId, metadata), {
     width: size,
     margin: 1,
     errorCorrectionLevel: "M",
@@ -42,7 +72,13 @@ export async function generateQrStamp(opts: {
   ctx.lineWidth = 2;
   ctx.strokeRect(1, 1, w - 2, h - 2);
 
-  const qr = await generateQrDataUrl(opts.drawingId, 180, opts.revisionId);
+  const qr = await generateQrDataUrl(opts.drawingId, 180, opts.revisionId, {
+    sheetNo: opts.sheetNo,
+    title: opts.title,
+    projectName: opts.projectName,
+    rev: opts.rev,
+    status: "approved"
+  });
   const img = new Image();
   await new Promise<void>((res, rej) => {
     img.onload = () => res();
