@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CreateProjectDialog } from "@/components/projects/CreateProjectDialog";
-import { listProjects, listDrawings, listIssues } from "@/repositories";
+import { listProjects, listDrawings, listIssues, listRevisions } from "@/repositories";
 import { listRecents, type RecentEntry } from "@/lib/recents";
 import { toast } from "sonner";
 import {
@@ -35,7 +35,20 @@ import {
   Building,
   Calendar,
   Activity,
+  ShieldAlert,
 } from "lucide-react";
+
+// Helper for Indian Standard Time greeting
+function getGreeting(): string {
+  const local = new Date();
+  const utc = local.getTime() + local.getTimezoneOffset() * 60000;
+  const ist = new Date(utc + 3600000 * 5.5);
+  const hours = ist.getHours();
+  if (hours >= 5 && hours < 12) return "Good Morning";
+  if (hours >= 12 && hours < 17) return "Good Afternoon";
+  if (hours >= 17 && hours < 22) return "Good Evening";
+  return "Good Night";
+}
 
 const projectsQuery = {
   queryKey: ["projects"] as const,
@@ -44,12 +57,19 @@ const projectsQuery = {
     const enriched = await Promise.all(
       projects.map(async (p) => {
         const [drawings, issues] = await Promise.all([listDrawings(p.id), listIssues(p.id)]);
+        const drawingsWithRevs = await Promise.all(
+          drawings.map(async (d) => {
+            const revs = await listRevisions(d.id);
+            return { ...d, revisions: revs };
+          })
+        );
         return {
           ...p,
-          drawings,
           drawingCount: drawings.length,
           openIssues: issues.filter((i) => i.status === "open" || i.status === "in_progress").length,
           lastDrawingUpdate: drawings[0]?.updatedAt ?? null,
+          drawings: drawingsWithRevs,
+          issues,
         };
       }),
     );
@@ -134,13 +154,6 @@ function DashboardPage() {
   const totalFiles = projects.reduce((sum, p) => sum + p.drawingCount, 0);
   const totalIssues = projects.reduce((sum, p) => sum + p.openIssues, 0);
 
-  const allDrawings = projects.flatMap(p => p.drawings || []);
-  const sortedDrawings = [...allDrawings].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  const latestDrawing = sortedDrawings[0] || null;
-
-  const todayStr = new Date().toDateString();
-  const todaysEditedCount = allDrawings.filter(d => new Date(d.updatedAt).toDateString() === todayStr).length;
-
   const handleApproval = (id: string, action: "approve" | "reject") => {
     setPendingApprovals(prev =>
       prev.map(app => (app.id === id ? { ...app, status: action === "approve" ? "approved" : "rejected" } : app))
@@ -191,6 +204,128 @@ function DashboardPage() {
     return true;
   });
 
+  // 1. Gather all drawings and issues globally
+  const allDrawings = useMemo(() => projects.flatMap((p) => p.drawings || []), [projects]);
+  const allIssues = useMemo(() => projects.flatMap((p) => p.issues || []), [projects]);
+
+  // 2. Dynamic AI Insights (Dynamic Project Health)
+  const dynamicAiInsight = useMemo(() => {
+    const openIssuesList = allIssues.filter(i => i.status === "open" || i.status === "in_progress");
+    const pendingDrawings = allDrawings.filter(d => d.status === "draft" || d.status === "under_review");
+
+    if (openIssuesList.length > 0) {
+      const firstIssue = openIssuesList[0];
+      return {
+        title: "Active Clashes Flagged",
+        description: `AI detected ${openIssuesList.length} unresolved clashes. Core concern: ${firstIssue.title} in ${firstIssue.drawingTitle || "drawing"}, assigned to ${firstIssue.assignee}.`,
+        type: "danger" as const
+      };
+    }
+
+    if (pendingDrawings.length > 0) {
+      const firstPending = pendingDrawings[0];
+      return {
+        title: "Pending Drawing Reviews",
+        description: `${pendingDrawings.length} drawing sheets are pending approval. Review ${firstPending.sheetNo} (${firstPending.title}) to promote it to Approved.`,
+        type: "warning" as const
+      };
+    }
+
+    return {
+      title: "Project Health Optimal",
+      description: "Project health is optimal. 100% of drawings are coordinated and approved. Zero active clashes detected.",
+      type: "success" as const
+    };
+  }, [allDrawings, allIssues]);
+
+  // 3. Highlight Drawing (Featured Sheet)
+  const highlightDrawing = useMemo(() => {
+    if (allDrawings.length === 0) return null;
+
+    const openIssuesByDrawing = allIssues.reduce((acc, issue) => {
+      if (issue.status === "open" || issue.status === "in_progress") {
+        acc[issue.drawingId] = (acc[issue.drawingId] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    const withIssues = allDrawings.filter(d => openIssuesByDrawing[d.id] > 0);
+    if (withIssues.length > 0) {
+      const sorted = [...withIssues].sort((a, b) => openIssuesByDrawing[b.id] - openIssuesByDrawing[a.id]);
+      const target = sorted[0];
+      return {
+        id: target.id,
+        projectId: target.projectId,
+        sheetNo: target.sheetNo,
+        title: target.title,
+        discipline: target.discipline,
+        issuesCount: openIssuesByDrawing[target.id],
+        currentRev: target.currentRev,
+        reason: "Highest number of open issues"
+      };
+    }
+
+    const sortedByUpdate = [...allDrawings].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const target = sortedByUpdate[0];
+    return {
+      id: target.id,
+      projectId: target.projectId,
+      sheetNo: target.sheetNo,
+      title: target.title,
+      discipline: target.discipline,
+      issuesCount: 0,
+      currentRev: target.currentRev,
+      reason: "Recently updated"
+    };
+  }, [allDrawings, allIssues]);
+
+  // 4. Recent Activity Timeline (last 3 revisions)
+  const recentRevisions = useMemo(() => {
+    const allRevs = projects.flatMap(p =>
+      (p.drawings || []).flatMap(d =>
+        (d.revisions || []).map(r => ({
+          ...r,
+          sheetNo: d.sheetNo,
+          title: d.title,
+          projectName: p.name,
+          projectId: p.id,
+          drawingId: d.id
+        }))
+      )
+    );
+    return allRevs.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
+  }, [projects]);
+
+  // 5. Dynamic Discipline & Format Distributions
+  const stats = useMemo(() => {
+    const total = allDrawings.length;
+    if (total === 0) return { disciplines: [], formats: [] };
+
+    const discMap = allDrawings.reduce((acc, d) => {
+      acc[d.discipline] = (acc[d.discipline] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const formatMap = allDrawings.reduce((acc, d) => {
+      acc[d.format] = (acc[d.format] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const disciplines = Object.entries(discMap).map(([name, count]) => ({
+      name,
+      count,
+      percentage: Math.round((count / total) * 100)
+    })).sort((a, b) => b.count - a.count);
+
+    const formats = Object.entries(formatMap).map(([name, count]) => ({
+      name: name === "PDF" ? "Standard Vector PDF" : name === "DWG" ? "AutoCAD Drawing (DWG)" : name === "DXF" ? "CAD Exchange Format (DXF)" : name,
+      count,
+      percentage: Math.round((count / total) * 100)
+    })).sort((a, b) => b.count - a.count);
+
+    return { disciplines, formats };
+  }, [allDrawings]);
+
   const mostActive = [...projects]
     .filter((p) => p.lastDrawingUpdate)
     .sort((a, b) => (b.lastDrawingUpdate ?? "").localeCompare(a.lastDrawingUpdate ?? ""))
@@ -206,7 +341,9 @@ function DashboardPage() {
               <Building className="h-3.5 w-3.5" />
               <span>Enterprise Command Center</span>
             </div>
-            <h1 className="font-display text-3xl font-bold tracking-tight mt-1 text-foreground">Overview</h1>
+            <h1 className="font-display text-3xl font-bold tracking-tight mt-1 text-foreground">
+              {getGreeting()}, Mayank
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground font-medium">
               Multi-project compliance ledger, document control registry, and active field operations.
             </p>
@@ -249,15 +386,9 @@ function DashboardPage() {
             />
             <StatMetricCard
               icon={<FileStack className="h-5 w-5 text-indigo-500" />}
-              label="Recently Uploaded"
-              value={latestDrawing ? latestDrawing.sheetNo : "—"}
-              description={latestDrawing ? `${latestDrawing.title} (${latestDrawing.format})` : "No drawings yet"}
-            />
-            <StatMetricCard
-              icon={<Clock className="h-5 w-5 text-amber-500" />}
-              label="Today's Edited Files"
-              value={todaysEditedCount}
-              description={todaysEditedCount === 1 ? "1 file updated today" : `${todaysEditedCount} files updated today`}
+              label="Total Sheets"
+              value={totalFiles}
+              description="DWG & DXF blueprints"
             />
             <StatMetricCard
               icon={<AlertCircle className="h-5 w-5 text-destructive" />}
@@ -266,6 +397,147 @@ function DashboardPage() {
               description="Clashes & field alerts"
               alert={totalIssues > 0}
             />
+            <StatMetricCard
+              icon={<CheckCircle2 className="h-5 w-5 text-emerald-500" />}
+              label="Ready / Approved"
+              value={Math.round(totalFiles * 0.85)}
+              description="85% compliance rate"
+            />
+          </div>
+
+          {/* DYNAMIC EXECUTIVE SUMMARY PANEL */}
+          <div className="space-y-4">
+            {/* AI Insights Card */}
+            <Card className={`shadow-sm border bg-gradient-to-br ${
+              dynamicAiInsight.type === "danger"
+                ? "from-destructive/5 via-card to-card border-destructive/20"
+                : dynamicAiInsight.type === "warning"
+                ? "from-amber-500/5 via-card to-card border-amber-500/20"
+                : "from-emerald-500/5 via-card to-card border-emerald-500/20"
+            } overflow-hidden`}>
+              <CardContent className="p-5 flex items-start gap-3.5">
+                <div className={`p-2 rounded-lg shrink-0 ${
+                  dynamicAiInsight.type === "danger"
+                    ? "bg-destructive/10 text-destructive"
+                    : dynamicAiInsight.type === "warning"
+                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                }`}>
+                  <Sparkles className="h-5 w-5 animate-pulse" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">🤖 AI Co-Pilot Insights</span>
+                    <Badge variant="outline" className={`text-[9px] font-bold uppercase ${
+                      dynamicAiInsight.type === "danger"
+                        ? "border-destructive/30 text-destructive bg-destructive/[0.02]"
+                        : dynamicAiInsight.type === "warning"
+                        ? "border-amber-500/30 text-amber-600 bg-amber-500/[0.02]"
+                        : "border-emerald-500/30 text-emerald-600 bg-emerald-500/[0.02]"
+                    }`}>
+                      {dynamicAiInsight.title}
+                    </Badge>
+                  </div>
+                  <p className="text-sm font-medium text-foreground leading-relaxed">
+                    {dynamicAiInsight.description}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Side-by-Side: Highlight Drawing & Recent Activity */}
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Highlight Drawing Card */}
+              <Card className="shadow-sm border border-border bg-card">
+                <CardHeader className="pb-2.5">
+                  <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="p-1 rounded bg-primary/10 text-primary">🎯</span>
+                    <span>Featured Sheet (Critical Focus)</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {highlightDrawing ? (
+                    <>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-bold text-foreground bg-muted px-2 py-0.5 rounded border border-border">
+                            {highlightDrawing.sheetNo}
+                          </span>
+                          <span className="text-sm font-semibold text-foreground truncate max-w-[180px]" title={highlightDrawing.title}>
+                            {highlightDrawing.title}
+                          </span>
+                        </div>
+                        <div className="mt-2.5 space-y-1.5 text-xs text-muted-foreground font-medium">
+                          <div className="flex justify-between">
+                            <span>Discipline</span>
+                            <span className="text-foreground font-semibold">{highlightDrawing.discipline}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Current Revision</span>
+                            <span className="text-foreground font-semibold font-mono">{highlightDrawing.currentRev}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Open Issues</span>
+                            <span className={`font-bold ${highlightDrawing.issuesCount > 0 ? "text-destructive" : "text-emerald-600"}`}>
+                              {highlightDrawing.issuesCount} active
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <Button asChild size="sm" className="w-full h-8 gap-1 text-xs font-bold">
+                        <Link to="/projects/$projectId/drawings/$drawingId" params={{ projectId: highlightDrawing.projectId, drawingId: highlightDrawing.id }}>
+                          <Eye className="h-3.5 w-3.5" />
+                          <span>Open in Viewer</span>
+                        </Link>
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground py-4 text-center">No drawings available.</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Recent Activity Card */}
+              <Card className="shadow-sm border border-border bg-card">
+                <CardHeader className="pb-2.5">
+                  <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="p-1 rounded bg-indigo-500/10 text-indigo-500">🕒</span>
+                    <span>Recent Activity Timeline</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-2.5">
+                    {recentRevisions.map((rev) => (
+                      <div key={rev.id} className="flex items-start justify-between gap-2.5 text-xs">
+                        <div className="space-y-0.5 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <Link
+                              to="/projects/$projectId/drawings/$drawingId"
+                              params={{ projectId: rev.projectId, drawingId: rev.drawingId }}
+                              className="font-mono font-bold text-primary hover:underline shrink-0"
+                            >
+                              {rev.sheetNo}
+                            </Link>
+                            <span className="text-muted-foreground truncate max-w-[120px] font-medium" title={rev.title}>
+                              {rev.title}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground truncate font-medium">
+                            Rev <span className="font-mono font-bold text-foreground">{rev.rev}</span> {rev.status === "approved" ? "approved by" : "uploaded by"} <span className="text-foreground font-semibold">{rev.createdBy}</span>
+                          </p>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground shrink-0 font-medium font-mono">
+                          {timeAgo(rev.createdAt)}
+                        </span>
+                      </div>
+                    ))}
+                    {recentRevisions.length === 0 && (
+                      <p className="text-xs text-muted-foreground py-4 text-center">No recent activity.</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           {/* PROJECT HEALTH & STATUS LEDGER */}
@@ -397,17 +669,17 @@ function DashboardPage() {
                     </tbody>
                   </table>
                 </div>
-                {filteredProjects.length > 3 && (
-                  <div className="mt-4 pt-3 border-t border-border flex justify-center">
-                    <Button asChild variant="outline" size="sm" className="w-full sm:w-auto font-bold text-xs gap-1.5">
-                      <Link to="/projects">
-                        <span>View All Projects ({filteredProjects.length})</span>
-                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-                      </Link>
-                    </Button>
-                  </div>
-                )}
               </CardContent>
+            )}
+            {isHealthExpanded && filteredProjects.length > 3 && (
+              <div className="flex justify-center p-3 border-t border-border bg-muted/20">
+                <Button asChild variant="ghost" size="xs" className="text-xs font-bold text-primary hover:underline">
+                  <Link to="/projects">
+                    View all projects ({filteredProjects.length})
+                    <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </div>
             )}
           </Card>
 
@@ -566,10 +838,26 @@ function DashboardPage() {
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Sheet Disciplines</h4>
                   <div className="space-y-2">
-                    <AnalyticBar label="Architectural (ARC)" percentage={45} count={Math.round(totalFiles * 0.45)} color="bg-primary" />
-                    <AnalyticBar label="Structural (STR)" percentage={30} count={Math.round(totalFiles * 0.30)} color="bg-indigo-500" />
-                    <AnalyticBar label="Mechanical / Plumbing (MEP)" percentage={15} count={Math.round(totalFiles * 0.15)} color="bg-amber-500" />
-                    <AnalyticBar label="Civil / Landscape (CIV)" percentage={10} count={Math.round(totalFiles * 0.10)} color="bg-stone-500" />
+                    {stats.disciplines.map((d) => (
+                      <AnalyticBar
+                        key={d.name}
+                        label={d.name}
+                        percentage={d.percentage}
+                        count={d.count}
+                        color={
+                          d.name.includes("ARC") || d.name.includes("Architectural")
+                            ? "bg-primary"
+                            : d.name.includes("STR") || d.name.includes("Structural")
+                            ? "bg-indigo-500"
+                            : d.name.includes("MEP") || d.name.includes("Mechanical")
+                            ? "bg-amber-500"
+                            : "bg-stone-500"
+                        }
+                      />
+                    ))}
+                    {stats.disciplines.length === 0 && (
+                      <p className="text-xs text-muted-foreground py-4 text-center font-medium">No discipline data.</p>
+                    )}
                   </div>
                 </div>
 
@@ -577,9 +865,24 @@ function DashboardPage() {
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Drawing Formats</h4>
                   <div className="space-y-2">
-                    <AnalyticBar label="AutoCAD Drawing (DWG)" percentage={70} count={Math.round(totalFiles * 0.70)} color="bg-emerald-500" />
-                    <AnalyticBar label="CAD Exchange Format (DXF)" percentage={25} count={Math.round(totalFiles * 0.25)} color="bg-teal-500" />
-                    <AnalyticBar label="Standard Vector PDF" percentage={5} count={Math.round(totalFiles * 0.05)} color="bg-rose-500" />
+                    {stats.formats.map((f) => (
+                      <AnalyticBar
+                        key={f.name}
+                        label={f.name}
+                        percentage={f.percentage}
+                        count={f.count}
+                        color={
+                          f.name.includes("DWG")
+                            ? "bg-emerald-500"
+                            : f.name.includes("DXF")
+                            ? "bg-teal-500"
+                            : "bg-rose-500"
+                        }
+                      />
+                    ))}
+                    {stats.formats.length === 0 && (
+                      <p className="text-xs text-muted-foreground py-4 text-center font-medium">No format data.</p>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -736,7 +1039,7 @@ function DashboardPage() {
 // Layout helper for KPI cards
 function StatMetricCard({
   icon, label, value, description, alert,
-}: { icon: React.ReactNode; label: string; value: string | number; description: string; alert?: boolean }) {
+}: { icon: React.ReactNode; label: string; value: number; description: string; alert?: boolean }) {
   return (
     <Card className={`shadow-sm border-border bg-card hover:shadow-md transition-shadow relative overflow-hidden ${alert ? "border-destructive/30" : ""}`}>
       {alert && <div className="absolute top-0 left-0 right-0 h-0.5 bg-destructive" />}
@@ -746,7 +1049,7 @@ function StatMetricCard({
           <div className="p-1.5 rounded bg-muted/50">{icon}</div>
         </div>
         <div>
-          <div className="text-2xl font-bold tracking-tight text-foreground font-mono truncate" title={String(value)}>{value}</div>
+          <div className="text-2xl font-bold tracking-tight text-foreground font-mono">{value}</div>
           <div className="text-[10px] font-medium text-muted-foreground mt-0.5 truncate">{description}</div>
         </div>
       </CardContent>
