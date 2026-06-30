@@ -561,7 +561,6 @@ function ProjectGridCard({ project }: { project: EnrichedProject; onDelete: (id:
     </Card>
   );
 }
-}
 
 // Compact List View Project Card
 function ProjectListCard({ project, onDelete, deleting }: { project: EnrichedProject; onDelete: (id: string) => void; deleting: boolean }) {
