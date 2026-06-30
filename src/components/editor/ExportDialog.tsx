@@ -224,8 +224,9 @@ async function exportPdf(opts: {
   }
 
   try {
-    pdf.addImage(snap, "PNG", drawX, drawY, drawW, drawH);
-  } catch {
+    pdf.addImage(snap, "PNG", drawX, drawY, drawW, drawH, undefined, "NONE");
+  } catch (e) {
+    console.error("[ExportDialog] PDF image embed error:", e);
     throw new Error("Could not embed the drawing snapshot in the PDF.");
   }
 
@@ -262,7 +263,7 @@ async function exportPdf(opts: {
     pdf.setDrawColor(40);
     pdf.setLineWidth(0.5);
     pdf.rect(qrX - 4, qrY - 4, qrSize + 8, qrSize + 8);
-    pdf.addImage(qr, "PNG", qrX, qrY, qrSize, qrSize);
+    pdf.addImage(qr, "PNG", qrX, qrY, qrSize, qrSize, undefined, "NONE");
     pdf.setFontSize(7);
     pdf.setTextColor(60);
     pdf.text("Scan to verify revision", qrX, qrY + qrSize + 10);

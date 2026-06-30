@@ -68,9 +68,8 @@ export async function seedDemoData(): Promise<void> {
 
   const drawings: Drawing[] = [];
   const revisions: Revision[] = [];
-
   function makeDrawing(p: string, folder: string, sheet: string, title: string, disc: string, revs: Array<{ rev: string; n: number; status: Revision["status"]; log: string; daysAgo: number; approver?: string }>): void {
-    const id = `d_${nanoid(6)}`;
+    const id = `d_${sheet.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
     const drawing: Drawing = {
       id,
       projectId: p,
@@ -86,7 +85,7 @@ export async function seedDemoData(): Promise<void> {
     };
     for (const r of revs) {
       const rev: Revision = {
-        id: `r_${nanoid(6)}`,
+        id: `${id}_${r.rev.toLowerCase().replace(/[^a-z0-9]/g, "_")}`,
         drawingId: id,
         rev: r.rev,
         revNumber: r.n,
@@ -109,7 +108,6 @@ export async function seedDemoData(): Promise<void> {
     if (!drawing.currentRevisionId) drawing.currentRevisionId = revisions[revisions.length - 1].id;
     drawings.push(drawing);
   }
-
   makeDrawing("p_tower_b", "Floor Plans", "A-101", "Level 03 — Floor Plan", "Architecture", [
     { rev: "R0", n: 0, status: "superseded", log: "Initial issue", daysAgo: 40 },
     { rev: "R1", n: 1, status: "superseded", log: "Core walls revised", daysAgo: 28 },

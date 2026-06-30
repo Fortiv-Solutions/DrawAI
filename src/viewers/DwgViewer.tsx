@@ -14,7 +14,7 @@ const VIEW_BACKGROUND = "#f8fafc";
 const VIEW_BACKGROUND_HEX = 0xf8fafc;
 const EDIT_BACKGROUND = "#0f172a";
 const EDIT_BACKGROUND_HEX = 0x0f172a;
-const PDF_EXPORT_LONG_SIDE = 2200;
+const PDF_EXPORT_LONG_SIDE = 3840;
 const MIN_EXPORT_DRAWING_PIXELS = 150;
 
 const workerBlobCache: Record<string, Promise<string>> = {};
