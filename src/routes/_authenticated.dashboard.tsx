@@ -46,6 +46,7 @@ const projectsQuery = {
         const [drawings, issues] = await Promise.all([listDrawings(p.id), listIssues(p.id)]);
         return {
           ...p,
+          drawings,
           drawingCount: drawings.length,
           openIssues: issues.filter((i) => i.status === "open" || i.status === "in_progress").length,
           lastDrawingUpdate: drawings[0]?.updatedAt ?? null,
@@ -132,6 +133,13 @@ function DashboardPage() {
 
   const totalFiles = projects.reduce((sum, p) => sum + p.drawingCount, 0);
   const totalIssues = projects.reduce((sum, p) => sum + p.openIssues, 0);
+
+  const allDrawings = projects.flatMap(p => p.drawings || []);
+  const sortedDrawings = [...allDrawings].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const latestDrawing = sortedDrawings[0] || null;
+
+  const todayStr = new Date().toDateString();
+  const todaysEditedCount = allDrawings.filter(d => new Date(d.updatedAt).toDateString() === todayStr).length;
 
   const handleApproval = (id: string, action: "approve" | "reject") => {
     setPendingApprovals(prev =>
@@ -241,9 +249,15 @@ function DashboardPage() {
             />
             <StatMetricCard
               icon={<FileStack className="h-5 w-5 text-indigo-500" />}
-              label="Total Sheets"
-              value={totalFiles}
-              description="DWG & DXF blueprints"
+              label="Recently Uploaded"
+              value={latestDrawing ? latestDrawing.sheetNo : "—"}
+              description={latestDrawing ? `${latestDrawing.title} (${latestDrawing.format})` : "No drawings yet"}
+            />
+            <StatMetricCard
+              icon={<Clock className="h-5 w-5 text-amber-500" />}
+              label="Today's Edited Files"
+              value={todaysEditedCount}
+              description={todaysEditedCount === 1 ? "1 file updated today" : `${todaysEditedCount} files updated today`}
             />
             <StatMetricCard
               icon={<AlertCircle className="h-5 w-5 text-destructive" />}
@@ -251,12 +265,6 @@ function DashboardPage() {
               value={totalIssues}
               description="Clashes & field alerts"
               alert={totalIssues > 0}
-            />
-            <StatMetricCard
-              icon={<CheckCircle2 className="h-5 w-5 text-emerald-500" />}
-              label="Ready / Approved"
-              value={Math.round(totalFiles * 0.85)}
-              description="85% compliance rate"
             />
           </div>
 
@@ -322,7 +330,7 @@ function DashboardPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border font-medium">
-                      {filteredProjects.map((p) => (
+                      {filteredProjects.slice(0, 3).map((p) => (
                         <tr key={p.id} className="hover:bg-muted/30 transition-colors">
                           <td className="py-3 px-3">
                             <Link to="/projects/$projectId" params={{ projectId: p.id }} className="hover:underline block font-semibold text-foreground">
@@ -389,6 +397,16 @@ function DashboardPage() {
                     </tbody>
                   </table>
                 </div>
+                {filteredProjects.length > 3 && (
+                  <div className="mt-4 pt-3 border-t border-border flex justify-center">
+                    <Button asChild variant="outline" size="sm" className="w-full sm:w-auto font-bold text-xs gap-1.5">
+                      <Link to="/projects">
+                        <span>View All Projects ({filteredProjects.length})</span>
+                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Link>
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             )}
           </Card>
@@ -718,7 +736,7 @@ function DashboardPage() {
 // Layout helper for KPI cards
 function StatMetricCard({
   icon, label, value, description, alert,
-}: { icon: React.ReactNode; label: string; value: number; description: string; alert?: boolean }) {
+}: { icon: React.ReactNode; label: string; value: string | number; description: string; alert?: boolean }) {
   return (
     <Card className={`shadow-sm border-border bg-card hover:shadow-md transition-shadow relative overflow-hidden ${alert ? "border-destructive/30" : ""}`}>
       {alert && <div className="absolute top-0 left-0 right-0 h-0.5 bg-destructive" />}
@@ -728,7 +746,7 @@ function StatMetricCard({
           <div className="p-1.5 rounded bg-muted/50">{icon}</div>
         </div>
         <div>
-          <div className="text-2xl font-bold tracking-tight text-foreground font-mono">{value}</div>
+          <div className="text-2xl font-bold tracking-tight text-foreground font-mono truncate" title={String(value)}>{value}</div>
           <div className="text-[10px] font-medium text-muted-foreground mt-0.5 truncate">{description}</div>
         </div>
       </CardContent>
