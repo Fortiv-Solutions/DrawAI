@@ -1,5 +1,6 @@
 {
   "name": "tanstack_start_ts",
+  "description": "DrawAI - Premium Enterprise Project Workspace and CAD Editor",
   "private": true,
   "sideEffects": false,
   "type": "module",
