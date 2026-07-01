@@ -330,7 +330,7 @@ function DrawingPage() {
   }
 
   return (
-    <AppShell projectId={projectId}>
+    <AppShell projectId={projectId} hideHeader>
       <div className="flex h-screen flex-col">
         <header className="border-b border-border bg-card">
           <div className="flex items-center gap-4 px-6 py-3">
@@ -382,6 +382,7 @@ function DrawingPage() {
               <ViewerHost
                 revision={activeRev}
                 editable={false}
+                bgTheme={bgTheme}
                 registerCommandRunner={(r) => (runCmdRef.current = r)}
                 registerSaveHandler={(h) => (saveRef.current = h)}
                 registerExportHandler={(h) => (exportRef.current = h)}

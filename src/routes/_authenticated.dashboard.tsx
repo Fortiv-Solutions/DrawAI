@@ -333,372 +333,128 @@ function DashboardPage() {
 
   return (
     <AppShell>
-      {/* ENTERPRISE TITLE BANNER */}
-      <div className="border-b border-border bg-card shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between px-8 py-6">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <Building className="h-3.5 w-3.5" />
-              <span>Enterprise Command Center</span>
+      <div className="max-w-6xl mx-auto space-y-6 py-8 px-6 min-h-screen">
+        
+        {/* GREETING & QUICK ACTIONS */}
+        <div className="bg-card border border-border rounded-xl p-6 shadow-xs relative overflow-hidden">
+          {/* Decorative subtle background gradient */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>All Systems Operational</span>
+                <span className="text-muted-foreground/40">•</span>
+                <span className="text-muted-foreground font-mono">
+                  {new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric", year: "numeric" })}
+                </span>
+              </div>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                {getGreeting()}, Mayank
+              </h1>
+              <p className="text-sm text-muted-foreground font-medium max-w-xl">
+                Welcome back. You have <span className="text-foreground font-semibold">{pendingApprovals.filter(a => a.status === "pending").length} pending approvals</span> and <span className="text-foreground font-semibold">{totalIssues} active issues</span> across your projects.
+              </p>
             </div>
-            <h1 className="font-display text-3xl font-bold tracking-tight mt-1 text-foreground">
-              {getGreeting()}, Mayank
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground font-medium">
-              Multi-project compliance ledger, document control registry, and active field operations.
-            </p>
-          </div>
-
-          {/* Quick Actions Ribbon */}
-          <div className="flex flex-wrap items-center gap-2">
-            <CreateProjectDialog
-              trigger={
-                <Button size="sm" className="gap-1.5 shadow">
-                  <Plus className="h-4 w-4" />
-                  <span>Create Project</span>
-                </Button>
-              }
-            />
-            <Button variant="outline" size="sm" onClick={triggerComplianceScan} disabled={scanning} className="gap-1.5 border-border bg-card">
-              <ShieldCheck className={`h-4 w-4 text-emerald-500 ${scanning ? "animate-pulse" : ""}`} />
-              <span>{scanning ? "Scanning..." : "Compliance Scan"}</span>
-            </Button>
-            <Button variant="outline" size="sm" onClick={triggerReportExport} disabled={exportingReport} className="gap-1.5 border-border bg-card">
-              <FileSpreadsheet className="h-4 w-4 text-primary" />
-              <span>{exportingReport ? "Generating..." : "Export Ledger"}</span>
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <CreateProjectDialog
+                trigger={
+                  <Button size="sm" className="gap-1.5 shadow font-bold">
+                    <Plus className="h-4 w-4" />
+                    <span>Create Project</span>
+                  </Button>
+                }
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* DASHBOARD GRID SYSTEM */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 p-8 bg-muted/20 min-h-screen">
-        {/* LEFT COLUMN: Main Command Panels (Span 8) */}
-        <div className="lg:col-span-8 space-y-6">
-          
-          {/* EXECUTIVE OVERVIEW KPI PANEL */}
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-            <StatMetricCard
-              icon={<FolderKanban className="h-5 w-5 text-primary" />}
-              label="Active Projects"
-              value={projects.length}
-              description="Ongoing construction"
-            />
-            <StatMetricCard
-              icon={<FileStack className="h-5 w-5 text-indigo-500" />}
-              label="Total Sheets"
-              value={totalFiles}
-              description="DWG & DXF blueprints"
-            />
-            <StatMetricCard
-              icon={<AlertCircle className="h-5 w-5 text-destructive" />}
-              label="Open Issues"
-              value={totalIssues}
-              description="Clashes & field alerts"
-              alert={totalIssues > 0}
-            />
-            <StatMetricCard
-              icon={<CheckCircle2 className="h-5 w-5 text-emerald-500" />}
-              label="Ready / Approved"
-              value={Math.round(totalFiles * 0.85)}
-              description="85% compliance rate"
-            />
-          </div>
+        {/* EXECUTIVE OVERVIEW KPI PANEL */}
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+          <StatMetricCard
+            icon={<FolderKanban className="h-5 w-5 text-primary" />}
+            label="Active Projects"
+            value={projects.length}
+            description="Ongoing construction"
+          />
+          <StatMetricCard
+            icon={<FileStack className="h-5 w-5 text-indigo-500" />}
+            label="Total Sheets"
+            value={totalFiles}
+            description="DWG & DXF blueprints"
+          />
+          <StatMetricCard
+            icon={<AlertCircle className="h-5 w-5 text-destructive" />}
+            label="Open Issues"
+            value={totalIssues}
+            description="Clashes & field alerts"
+            alert={totalIssues > 0}
+          />
+          <StatMetricCard
+            icon={<CheckCircle2 className="h-5 w-5 text-emerald-500" />}
+            label="Ready / Approved"
+            value={Math.round(totalFiles * 0.85)}
+            description="85% compliance rate"
+          />
+        </div>
 
-          {/* DYNAMIC EXECUTIVE SUMMARY PANEL */}
-          <div className="space-y-4">
-            {/* AI Insights Card */}
-            <Card className={`shadow-sm border bg-gradient-to-br ${
+        {/* AI INSIGHTS CARD (FULL WIDTH) */}
+        <Card className={`shadow-sm border bg-gradient-to-br ${
+          dynamicAiInsight.type === "danger"
+            ? "from-destructive/5 via-card to-card border-destructive/20"
+            : dynamicAiInsight.type === "warning"
+            ? "from-amber-500/5 via-card to-card border-amber-500/20"
+            : "from-emerald-500/5 via-card to-card border-emerald-500/20"
+        } overflow-hidden`}>
+          <CardContent className="p-5 flex items-start gap-3.5">
+            <div className={`p-2 rounded-lg shrink-0 ${
               dynamicAiInsight.type === "danger"
-                ? "from-destructive/5 via-card to-card border-destructive/20"
+                ? "bg-destructive/10 text-destructive"
                 : dynamicAiInsight.type === "warning"
-                ? "from-amber-500/5 via-card to-card border-amber-500/20"
-                : "from-emerald-500/5 via-card to-card border-emerald-500/20"
-            } overflow-hidden`}>
-              <CardContent className="p-5 flex items-start gap-3.5">
-                <div className={`p-2 rounded-lg shrink-0 ${
-                  dynamicAiInsight.type === "danger"
-                    ? "bg-destructive/10 text-destructive"
-                    : dynamicAiInsight.type === "warning"
-                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                }`}>
-                  <Sparkles className="h-5 w-5 animate-pulse" />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">🤖 AI Co-Pilot Insights</span>
-                    <Badge variant="outline" className={`text-[9px] font-bold uppercase ${
-                      dynamicAiInsight.type === "danger"
-                        ? "border-destructive/30 text-destructive bg-destructive/[0.02]"
-                        : dynamicAiInsight.type === "warning"
-                        ? "border-amber-500/30 text-amber-600 bg-amber-500/[0.02]"
-                        : "border-emerald-500/30 text-emerald-600 bg-emerald-500/[0.02]"
-                    }`}>
-                      {dynamicAiInsight.title}
-                    </Badge>
-                  </div>
-                  <p className="text-sm font-medium text-foreground leading-relaxed">
-                    {dynamicAiInsight.description}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Side-by-Side: Highlight Drawing & Recent Activity */}
-            <div className="grid gap-4 md:grid-cols-2">
-              {/* Highlight Drawing Card */}
-              <Card className="shadow-sm border border-border bg-card">
-                <CardHeader className="pb-2.5">
-                  <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <span className="p-1 rounded bg-primary/10 text-primary">🎯</span>
-                    <span>Featured Sheet (Critical Focus)</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {highlightDrawing ? (
-                    <>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm font-bold text-foreground bg-muted px-2 py-0.5 rounded border border-border">
-                            {highlightDrawing.sheetNo}
-                          </span>
-                          <span className="text-sm font-semibold text-foreground truncate max-w-[180px]" title={highlightDrawing.title}>
-                            {highlightDrawing.title}
-                          </span>
-                        </div>
-                        <div className="mt-2.5 space-y-1.5 text-xs text-muted-foreground font-medium">
-                          <div className="flex justify-between">
-                            <span>Discipline</span>
-                            <span className="text-foreground font-semibold">{highlightDrawing.discipline}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Current Revision</span>
-                            <span className="text-foreground font-semibold font-mono">{highlightDrawing.currentRev}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Open Issues</span>
-                            <span className={`font-bold ${highlightDrawing.issuesCount > 0 ? "text-destructive" : "text-emerald-600"}`}>
-                              {highlightDrawing.issuesCount} active
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <Button asChild size="sm" className="w-full h-8 gap-1 text-xs font-bold">
-                        <Link to="/projects/$projectId/drawings/$drawingId" params={{ projectId: highlightDrawing.projectId, drawingId: highlightDrawing.id }}>
-                          <Eye className="h-3.5 w-3.5" />
-                          <span>Open in Viewer</span>
-                        </Link>
-                      </Button>
-                    </>
-                  ) : (
-                    <p className="text-xs text-muted-foreground py-4 text-center">No drawings available.</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Recent Activity Card */}
-              <Card className="shadow-sm border border-border bg-card">
-                <CardHeader className="pb-2.5">
-                  <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <span className="p-1 rounded bg-indigo-500/10 text-indigo-500">🕒</span>
-                    <span>Recent Activity Timeline</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="space-y-2.5">
-                    {recentRevisions.map((rev) => (
-                      <div key={rev.id} className="flex items-start justify-between gap-2.5 text-xs">
-                        <div className="space-y-0.5 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <Link
-                              to="/projects/$projectId/drawings/$drawingId"
-                              params={{ projectId: rev.projectId, drawingId: rev.drawingId }}
-                              className="font-mono font-bold text-primary hover:underline shrink-0"
-                            >
-                              {rev.sheetNo}
-                            </Link>
-                            <span className="text-muted-foreground truncate max-w-[120px] font-medium" title={rev.title}>
-                              {rev.title}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground truncate font-medium">
-                            Rev <span className="font-mono font-bold text-foreground">{rev.rev}</span> {rev.status === "approved" ? "approved by" : "uploaded by"} <span className="text-foreground font-semibold">{rev.createdBy}</span>
-                          </p>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground shrink-0 font-medium font-mono">
-                          {timeAgo(rev.createdAt)}
-                        </span>
-                      </div>
-                    ))}
-                    {recentRevisions.length === 0 && (
-                      <p className="text-xs text-muted-foreground py-4 text-center">No recent activity.</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+            }`}>
+              <Sparkles className="h-5 w-5 animate-pulse" />
             </div>
-          </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">🤖 AI Co-Pilot Insights</span>
+                <Badge variant="outline" className={`text-[9px] font-bold uppercase ${
+                  dynamicAiInsight.type === "danger"
+                    ? "border-destructive/30 text-destructive bg-destructive/[0.02]"
+                    : dynamicAiInsight.type === "warning"
+                    ? "border-amber-500/30 text-amber-600 bg-amber-500/[0.02]"
+                    : "border-emerald-500/30 text-emerald-600 bg-emerald-500/[0.02]"
+                }`}>
+                  {dynamicAiInsight.title}
+                </Badge>
+              </div>
+              <p className="text-sm font-medium text-foreground leading-relaxed">
+                {dynamicAiInsight.description}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* PROJECT HEALTH & STATUS LEDGER */}
-          <Card className="shadow-sm border-border bg-card transition-all duration-200">
-            <CardHeader className="flex flex-row items-center justify-between pb-3 select-none">
-              <div>
-                <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-primary" />
-                  <span>Project Status & Health Score</span>
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  Compliance rating based on active sheets, revision cycle frequency, and outstanding issues.
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant={projectFilter === "all" ? "secondary" : "ghost"}
-                  size="xs"
-                  onClick={() => setProjectFilter("all")}
-                  className="text-[10px] px-2.5 h-7 font-bold"
-                >
-                  All
-                </Button>
-                <Button
-                  variant={projectFilter === "critical" ? "secondary" : "ghost"}
-                  size="xs"
-                  onClick={() => setProjectFilter("critical")}
-                  className="text-[10px] px-2.5 h-7 font-bold"
-                >
-                  Needs Attention
-                </Button>
-                <Button
-                  variant={projectFilter === "active" ? "secondary" : "ghost"}
-                  size="xs"
-                  onClick={() => setProjectFilter("active")}
-                  className="text-[10px] px-2.5 h-7 font-bold"
-                >
-                  Active
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 border-none hover:bg-muted"
-                  onClick={() => setIsHealthExpanded(!isHealthExpanded)}
-                >
-                  {isHealthExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-                </Button>
-              </div>
-            </CardHeader>
-            {isHealthExpanded && (
-              <CardContent className="pt-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-border bg-muted/40 text-muted-foreground uppercase font-bold tracking-wider">
-                        <th className="py-2.5 px-3">Project details</th>
-                        <th className="py-2.5 px-3">Discipline</th>
-                        <th className="py-2.5 px-3 text-center font-bold">Sheets</th>
-                        <th className="py-2.5 px-3 text-center">Open issues</th>
-                        <th className="py-2.5 px-3">Health index</th>
-                        <th className="py-2.5 px-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border font-medium">
-                      {filteredProjects.slice(0, 3).map((p) => (
-                        <tr key={p.id} className="hover:bg-muted/30 transition-colors">
-                          <td className="py-3 px-3">
-                            <Link to="/projects/$projectId" params={{ projectId: p.id }} className="hover:underline block font-semibold text-foreground">
-                              {p.name}
-                            </Link>
-                            <span className="text-[10px] text-muted-foreground block font-medium mt-0.5">{p.location || "Location unassigned"}</span>
-                          </td>
-                          <td className="py-3 px-3">
-                            <Badge variant="outline" className="font-mono text-[9px] uppercase font-bold py-0">{p.type}</Badge>
-                          </td>
-                          <td className="py-3 px-3 text-center font-semibold text-foreground">{p.drawingCount}</td>
-                          <td className="py-3 px-3 text-center">
-                            {p.openIssues > 0 ? (
-                              <span className="inline-flex items-center gap-1 rounded bg-destructive/10 px-1.5 py-0.5 font-bold text-destructive">
-                                <AlertCircle className="h-3 w-3" />
-                                {p.openIssues} open
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground font-normal">—</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden w-24">
-                                <div
-                                  className={`h-full rounded-full ${
-                                    p.health === "danger"
-                                      ? "bg-destructive"
-                                      : p.health === "warning"
-                                      ? "bg-amber-500"
-                                      : "bg-emerald-500"
-                                  }`}
-                                  style={{ width: `${p.score}%` }}
-                                />
-                              </div>
-                              <span className={`font-mono text-[10px] font-bold ${
-                                p.health === "danger"
-                                  ? "text-destructive"
-                                  : p.health === "warning"
-                                  ? "text-amber-600 dark:text-amber-400"
-                                  : "text-emerald-600 dark:text-emerald-400"
-                              }`}>
-                                {p.score}%
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-3 text-right">
-                            <Button asChild variant="ghost" size="xs" className="h-7 px-2">
-                              <Link to="/projects/$projectId" params={{ projectId: p.id }}>
-                                Open Register
-                                <ArrowRight className="ml-1 h-3.5 w-3.5 text-muted-foreground" />
-                              </Link>
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                      {filteredProjects.length === 0 && (
-                        <tr>
-                          <td colSpan={6} className="py-8 text-center text-muted-foreground">
-                            No active projects match the selected filter.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            )}
-            {isHealthExpanded && filteredProjects.length > 3 && (
-              <div className="flex justify-center p-3 border-t border-border bg-muted/20">
-                <Button asChild variant="ghost" size="xs" className="text-xs font-bold text-primary hover:underline">
-                  <Link to="/projects">
-                    View all projects ({filteredProjects.length})
-                    <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                  </Link>
-                </Button>
-              </div>
-            )}
-          </Card>
-
-          {/* PENDING REVIEWS & DRAWING APPROVALS */}
-          <Card className="shadow-sm border-border bg-card">
+        {/* ROW 3: PENDING APPROVALS (2/3) & FEATURED SHEET (1/3) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* PENDING REVIEWS & APPROVALS (2 cols) */}
+          <Card className="lg:col-span-2 shadow-sm border-border bg-card">
             <CardHeader className="pb-3 select-none">
               <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                <ListTodo className="h-4 w-4 text-indigo-500" />
+                <ListTodo className="h-4.5 w-4.5 text-indigo-500" />
                 <span>Pending Reviews & Approvals</span>
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                Drawing revisions submitted by engineering teams waiting for document control verification.
+                Drawing revisions waiting for document control verification.
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-0 space-y-3">
               {pendingApprovals.map((app) => (
                 <div
                   key={app.id}
-                  className={`flex flex-col md:flex-row md:items-center justify-between border border-border rounded-lg p-3 gap-3 transition-opacity ${
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between border border-border rounded-lg p-3.5 gap-3 transition-opacity ${
                     app.status !== "pending" ? "opacity-50" : "hover:bg-muted/20"
                   }`}
                 >
@@ -745,292 +501,208 @@ function DashboardPage() {
                   </div>
                 </div>
               ))}
+              {pendingApprovals.length === 0 && (
+                <p className="text-xs text-muted-foreground py-6 text-center font-medium">No pending approvals.</p>
+              )}
             </CardContent>
           </Card>
 
-          {/* AI INSIGHTS & RECOMMENDATIONS */}
-          <Card className="shadow-sm border-border bg-gradient-to-br from-primary/5 via-card to-card overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between pb-3 select-none">
-              <div>
-                <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                  <BrainCircuit className="h-4.5 w-4.5 text-primary" />
-                  <span>DrawAI Copilot Insights</span>
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  Automated vector inspections, sheet title reconciliation, and site QR compliance findings.
-                </CardDescription>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 border-none hover:bg-muted"
-                onClick={() => setIsAiExpanded(!isAiExpanded)}
-              >
-                {isAiExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-              </Button>
+          {/* FEATURED SHEET (1 col) */}
+          <Card className="shadow-sm border border-border bg-card">
+            <CardHeader className="pb-2.5">
+              <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <span className="p-1 rounded bg-primary/10 text-primary">🎯</span>
+                <span>Featured Sheet (Critical Focus)</span>
+              </CardTitle>
             </CardHeader>
-            {isAiExpanded && (
-              <CardContent className="pt-0 grid gap-3">
-                {aiInsights.map((insight) => (
-                  <div
-                    key={insight.id}
-                    className="flex items-start justify-between gap-3 border border-primary/10 rounded-lg p-3 bg-card/60 hover:bg-card transition-all"
-                  >
-                    <div className="flex gap-2.5">
-                      <div className="mt-0.5 rounded-full bg-primary/10 p-1.5 text-primary shrink-0">
-                        <Sparkles className="h-3.5 w-3.5" />
+            <CardContent className="space-y-3">
+              {highlightDrawing ? (
+                <>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm font-bold text-foreground bg-muted px-2 py-0.5 rounded border border-border">
+                          {highlightDrawing.sheetNo}
+                        </span>
+                        <span className="text-sm font-semibold text-foreground truncate max-w-[150px]" title={highlightDrawing.title}>
+                          {highlightDrawing.title}
+                        </span>
                       </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-foreground">{insight.title}</span>
-                          <Badge variant="secondary" className="text-[9px] font-mono font-bold leading-none px-1.5 py-0">
-                            {insight.project}
-                          </Badge>
+                      <div className="mt-3 space-y-2 text-xs text-muted-foreground font-medium">
+                        <div className="flex justify-between border-b border-border pb-1.5">
+                          <span>Discipline</span>
+                          <span className="text-foreground font-semibold">{highlightDrawing.discipline}</span>
                         </div>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed font-medium">
-                          {insight.description}
-                        </p>
+                        <div className="flex justify-between border-b border-border pb-1.5">
+                          <span>Current Revision</span>
+                          <span className="text-foreground font-semibold font-mono">{highlightDrawing.currentRev}</span>
+                        </div>
+                        <div className="flex justify-between pb-1">
+                          <span>Open Issues</span>
+                          <span className={`font-bold ${highlightDrawing.issuesCount > 0 ? "text-destructive" : "text-emerald-600"}`}>
+                            {highlightDrawing.issuesCount} active
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      className="h-7 hover:bg-primary/5 text-primary font-bold tracking-tight"
-                      onClick={() => handleResolveInsight(insight.id)}
-                    >
-                      Resolve
-                    </Button>
                   </div>
-                ))}
-                {aiInsights.length === 0 && (
-                  <p className="py-6 text-center text-xs text-muted-foreground">
-                    All AI insights resolved. Run a Compliance Scan to check for updates.
-                  </p>
-                )}
-              </CardContent>
-            )}
+                  <Button asChild size="sm" className="w-full h-8 gap-1 text-xs font-bold mt-2">
+                    <Link to="/projects/$projectId/drawings/$drawingId" params={{ projectId: highlightDrawing.projectId, drawingId: highlightDrawing.id }}>
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>Open in Viewer</span>
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground py-4 text-center">No drawings available.</p>
+              )}
+            </CardContent>
           </Card>
+        </div>
 
-          {/* REPORTS & ANALYTICS SECTION */}
-          <Card className="shadow-sm border-border bg-card">
+        {/* ROW 4: PROJECT STATUS TABLE (2/3) & RECENT ACTIVITY TIMELINE (1/3) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* PROJECT STATUS & HEALTH LEDGER (2 cols) */}
+          <Card className="lg:col-span-2 shadow-sm border-border bg-card transition-all duration-200">
             <CardHeader className="flex flex-row items-center justify-between pb-3 select-none">
               <div>
                 <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                  <FileBarChart2 className="h-4.5 w-4.5 text-primary" />
-                  <span>Reports & Sheet Analytics</span>
+                  <Activity className="h-4.5 w-4.5 text-primary" />
+                  <span>Project Status & Health Score</span>
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground">
-                  Distribution of sheet drawings by construction disciplines and design formats.
+                  Compliance rating based on active sheets, revision cycle frequency, and outstanding issues.
                 </CardDescription>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 border-none hover:bg-muted"
-                onClick={() => setIsReportsExpanded(!isReportsExpanded)}
-              >
-                {isReportsExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant={projectFilter === "all" ? "secondary" : "ghost"}
+                  size="xs"
+                  onClick={() => setProjectFilter("all")}
+                  className="text-[10px] px-2.5 h-7 font-bold"
+                >
+                  All
+                </Button>
+                <Button
+                  variant={projectFilter === "critical" ? "secondary" : "ghost"}
+                  size="xs"
+                  onClick={() => setProjectFilter("critical")}
+                  className="text-[10px] px-2.5 h-7 font-bold"
+                >
+                  Needs Attention
+                </Button>
+                <Button
+                  variant={projectFilter === "active" ? "secondary" : "ghost"}
+                  size="xs"
+                  onClick={() => setProjectFilter("active")}
+                  className="text-[10px] px-2.5 h-7 font-bold"
+                >
+                  Active
+                </Button>
+              </div>
             </CardHeader>
-            {isReportsExpanded && (
-              <CardContent className="pt-0 grid gap-6 md:grid-cols-2">
-                {/* Discipline distribution */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Sheet Disciplines</h4>
-                  <div className="space-y-2">
-                    {stats.disciplines.map((d) => (
-                      <AnalyticBar
-                        key={d.name}
-                        label={d.name}
-                        percentage={d.percentage}
-                        count={d.count}
-                        color={
-                          d.name.includes("ARC") || d.name.includes("Architectural")
-                            ? "bg-primary"
-                            : d.name.includes("STR") || d.name.includes("Structural")
-                            ? "bg-indigo-500"
-                            : d.name.includes("MEP") || d.name.includes("Mechanical")
-                            ? "bg-amber-500"
-                            : "bg-stone-500"
-                        }
-                      />
-                    ))}
-                    {stats.disciplines.length === 0 && (
-                      <p className="text-xs text-muted-foreground py-4 text-center font-medium">No discipline data.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* File Formats */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Drawing Formats</h4>
-                  <div className="space-y-2">
-                    {stats.formats.map((f) => (
-                      <AnalyticBar
-                        key={f.name}
-                        label={f.name}
-                        percentage={f.percentage}
-                        count={f.count}
-                        color={
-                          f.name.includes("DWG")
-                            ? "bg-emerald-500"
-                            : f.name.includes("DXF")
-                            ? "bg-teal-500"
-                            : "bg-rose-500"
-                        }
-                      />
-                    ))}
-                    {stats.formats.length === 0 && (
-                      <p className="text-xs text-muted-foreground py-4 text-center font-medium">No format data.</p>
-                    )}
-                  </div>
+            {isHealthExpanded && (
+              <CardContent className="pt-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/40 text-muted-foreground uppercase font-bold tracking-wider">
+                        <th className="py-2.5 px-3">Project details</th>
+                        <th className="py-2.5 px-3">Discipline</th>
+                        <th className="py-2.5 px-3 text-center font-bold">Sheets</th>
+                        <th className="py-2.5 px-3 text-center">Open issues</th>
+                        <th className="py-2.5 px-3">Health index</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border font-medium">
+                      {filteredProjects.slice(0, 3).map((p) => (
+                        <tr key={p.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="py-3 px-3">
+                            <Link to="/projects/$projectId" params={{ projectId: p.id }} className="hover:underline block font-semibold text-foreground">
+                              {p.name}
+                            </Link>
+                          </td>
+                          <td className="py-3 px-3">
+                            <Badge variant="outline" className="font-mono text-[9px] uppercase font-bold py-0">{p.type}</Badge>
+                          </td>
+                          <td className="py-3 px-3 text-center font-semibold text-foreground">{p.drawingCount}</td>
+                          <td className="py-3 px-3 text-center">
+                            {p.openIssues > 0 ? (
+                              <span className="inline-flex items-center gap-1 rounded bg-destructive/10 px-1.5 py-0.5 font-bold text-destructive">
+                                {p.openIssues}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground font-normal">—</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden w-20">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    p.health === "danger"
+                                      ? "bg-destructive"
+                                      : p.health === "warning"
+                                      ? "bg-amber-500"
+                                      : "bg-emerald-500"
+                                  }`}
+                                  style={{ width: `${p.score}%` }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </CardContent>
             )}
           </Card>
 
+          {/* RECENT ACTIVITY (1 col) */}
+          <Card className="shadow-sm border border-border bg-card">
+            <CardHeader className="pb-2.5">
+              <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <span className="p-1 rounded bg-indigo-500/10 text-indigo-500">🕒</span>
+                <span>Recent Activity Timeline</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-3">
+                {recentRevisions.map((rev) => (
+                  <div key={rev.id} className="flex items-start justify-between gap-2.5 text-xs border-b border-border/50 pb-2.5 last:border-0 last:pb-0">
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <Link
+                          to="/projects/$projectId/drawings/$drawingId"
+                          params={{ projectId: rev.projectId, drawingId: rev.drawingId }}
+                          className="font-mono font-bold text-primary hover:underline shrink-0"
+                        >
+                          {rev.sheetNo}
+                        </Link>
+                        <span className="text-muted-foreground truncate max-w-[120px] font-medium" title={rev.title}>
+                          {rev.title}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate font-medium">
+                        Rev <span className="font-mono font-bold text-foreground">{rev.rev}</span> {rev.status === "approved" ? "approved by" : "uploaded by"} <span className="text-foreground font-semibold">{rev.createdBy}</span>
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground shrink-0 font-medium font-mono">
+                      {timeAgo(rev.createdAt)}
+                    </span>
+                  </div>
+                ))}
+                {recentRevisions.length === 0 && (
+                  <p className="text-xs text-muted-foreground py-4 text-center">No recent activity.</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* RIGHT COLUMN: Action center, Alerts, and Feed (Span 4) */}
-        <div className="lg:col-span-4 space-y-6">
-
-          {/* ACTIVE DISPATCH CENTER (QUICK ROUTING) */}
-          <Card className="shadow-sm border-border bg-card">
-            <CardHeader className="pb-3 select-none">
-              <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Command Dispatcher
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Link to="/projects" className="w-full block">
-                <Button variant="outline" className="w-full justify-start gap-2.5 h-10 border-border hover:bg-muted text-foreground text-xs font-semibold">
-                  <FolderKanban className="h-4 w-4 text-primary" />
-                  <span>Browse Project Registers</span>
-                </Button>
-              </Link>
-
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: "Med Center", id: projects[0]?.id },
-                  { label: "Riverfront", id: projects[1]?.id },
-                ].map((p) => p.id ? (
-                  <Link key={p.id} to="/projects/$projectId" params={{ projectId: p.id }} className="w-full block">
-                    <Button variant="secondary" className="w-full justify-center h-8 text-[11px] font-bold text-foreground truncate">
-                      {p.label}
-                    </Button>
-                  </Link>
-                ) : null)}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* URGENT ALERTS & NOTIFICATIONS */}
-          <Card className="shadow-sm border-border bg-card">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Bell className="h-4 w-4 text-amber-500" />
-                <span>Urgent Notifications</span>
-              </CardTitle>
-              <Badge variant="destructive" className="font-bold text-[9px] tracking-wider py-0 px-1">Alert</Badge>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-3 text-xs">
-              <NotificationItem
-                time="12m ago"
-                title="Clash Issue #41 Created"
-                desc="Structure beam collision flagged in Sector B Mechanical Layout."
-                critical
-              />
-              <NotificationItem
-                time="1h ago"
-                title="Superseded Sheet Warning"
-                desc="Outdated PDF scan print was uploaded. Corrected to active Revision 3."
-              />
-              <NotificationItem
-                time="3h ago"
-                title="John Doe requested review"
-                desc="New revision uploaded for Medical Center Plumbing layout."
-              />
-            </CardContent>
-          </Card>
-
-          {/* DOCUMENT ACTIVITY FEED (Recently opened/edited) */}
-          <Card className="shadow-sm border-border bg-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" />
-                <span>Blueprint Activity Feed</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-4">
-              {/* Recently edited */}
-              <div className="space-y-2">
-                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                  <Pencil className="h-3.5 w-3.5" />
-                  <span>Modified Sheets</span>
-                </h4>
-                <div className="space-y-1.5">
-                  {recentEdited.length === 0 ? (
-                    <p className="py-2 text-[11px] text-muted-foreground font-medium">No drawings modified recently.</p>
-                  ) : (
-                    recentEdited.map((e) => (
-                      <Link
-                        key={`${e.drawingId}-${e.at}`}
-                        to="/projects/$projectId/drawings/$drawingId"
-                        params={{ projectId: e.projectId, drawingId: e.drawingId }}
-                        className="flex flex-col gap-0.5 rounded-md p-1.5 hover:bg-muted/50 transition-colors"
-                      >
-                        <span className="font-semibold text-xs text-foreground truncate">{e.title}</span>
-                        <span className="text-[10px] text-muted-foreground font-medium">{timeAgo(e.at)}</span>
-                      </Link>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Recently opened */}
-              <div className="space-y-2 pt-2 border-t border-border">
-                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                  <Eye className="h-3.5 w-3.5" />
-                  <span>Viewed Sheets</span>
-                </h4>
-                <div className="space-y-1.5">
-                  {recentOpened.length === 0 ? (
-                    <p className="py-2 text-[11px] text-muted-foreground font-medium">No drawings viewed recently.</p>
-                  ) : (
-                    recentOpened.map((e) => (
-                      <Link
-                        key={`${e.drawingId}-${e.at}`}
-                        to="/projects/$projectId/drawings/$drawingId"
-                        params={{ projectId: e.projectId, drawingId: e.drawingId }}
-                        className="flex flex-col gap-0.5 rounded-md p-1.5 hover:bg-muted/50 transition-colors"
-                      >
-                        <span className="font-semibold text-xs text-foreground truncate">{e.title}</span>
-                        <span className="text-[10px] text-muted-foreground font-medium">{timeAgo(e.at)}</span>
-                      </Link>
-                    ))
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* COLLABORATIVE TEAM ACTIVITY LOG */}
-          <Card className="shadow-sm border-border bg-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary" />
-                <span>Active Collaborative Log</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-3.5 text-[11px] font-medium">
-              <TeamActivityRow user="Alice Vance" action="joined" target="Medical Center Plaza" icon={<CheckCircle2 className="h-3 w-3 text-emerald-500" />} />
-              <TeamActivityRow user="Bob Chen" action="updated revision" target="S-204 Foundation Details" icon={<Clock className="h-3 w-3 text-indigo-500" />} />
-              <TeamActivityRow user="David Wilson" action="resolved clash issue" target="Issue #38 (Level 2 MEP)" icon={<CheckCircle2 className="h-3 w-3 text-emerald-500" />} />
-              <TeamActivityRow user="Sarah Smith" action="generated verification QR" target="M-301 HVAC Layout" icon={<QrCode className="h-3 w-3 text-primary" />} />
-            </CardContent>
-          </Card>
-
-        </div>
       </div>
     </AppShell>
   );
@@ -1054,52 +726,5 @@ function StatMetricCard({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-// Layout helper for HTML/CSS analytic bar charts
-function AnalyticBar({ label, percentage, count, color }: { label: string; percentage: number; count: number; color: string }) {
-  return (
-    <div className="space-y-1 text-xs">
-      <div className="flex justify-between font-medium">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-semibold text-foreground">{count} ({percentage}%)</span>
-      </div>
-      <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${percentage}%` }} />
-      </div>
-    </div>
-  );
-}
-
-// Layout helper for notifications
-function NotificationItem({ time, title, desc, critical }: { time: string; title: string; desc: string; critical?: boolean }) {
-  return (
-    <div className={`flex items-start gap-2.5 p-2 rounded-md transition-colors ${critical ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-muted/40"}`}>
-      <div className="mt-1 shrink-0">
-        <span className={`h-1.5 w-1.5 rounded-full block ${critical ? "bg-destructive animate-pulse" : "bg-primary"}`} />
-      </div>
-      <div className="space-y-0.5 min-w-0">
-        <div className="flex items-center justify-between gap-2">
-          <span className="font-bold text-foreground text-[11px] truncate">{title}</span>
-          <span className="font-mono text-[9px] text-muted-foreground shrink-0">{time}</span>
-        </div>
-        <p className="text-[10px] text-muted-foreground leading-normal font-medium">{desc}</p>
-      </div>
-    </div>
-  );
-}
-
-// Layout helper for team logs
-function TeamActivityRow({ user, action, target, icon }: { user: string; action: string; target: string; icon: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-2 hover:bg-muted/30 p-1 rounded transition-colors">
-      <div className="mt-0.5 shrink-0">{icon}</div>
-      <div className="leading-relaxed">
-        <span className="font-bold text-foreground">{user}</span>{" "}
-        <span className="text-muted-foreground">{action}</span>{" "}
-        <span className="font-semibold text-foreground truncate max-w-[150px] inline-block align-bottom">{target}</span>
-      </div>
-    </div>
   );
 }

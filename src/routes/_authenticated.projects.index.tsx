@@ -114,26 +114,60 @@ function ProjectsIndex() {
 
   // Enrich project list with enterprise attributes
   const enrichedProjects: EnrichedProject[] = useMemo(() => {
-    const codes = ["PRJ-2026-A", "PRJ-2026-B", "PRJ-2026-C", "PRJ-2026-D", "PRJ-2026-E"];
-    const clients = ["Metropolitan Transit Authority", "Apex Development Group", "Urban Redevelopment Corp", "Global Logistics Partners"];
-    const statuses: ProjectStatus[] = ["Active", "Completed", "On Hold", "Archived"];
-    const activities = [
-      { time: "30 minutes ago", description: "Rev 12 approved", engineer: "Rahul Shah" },
-      { time: "2 hours ago", description: "3 new drawings uploaded", engineer: "Sarah Chen" },
-      { time: "1 day ago", description: "MEP clash issue resolved", engineer: "John Smith" },
-      { time: "3 days ago", description: "Structural ledger updated", engineer: "David Miller" }
-    ];
+    return rawProjects.map((p) => {
+      let code = "PRJ-" + p.name.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4) + "-2026"; // dynamic fallback
+      let client = "Apex Development Group";
+      let status: ProjectStatus = "Active";
+      let progress = 75;
+      let openIssues = p.openIssues ?? 0;
+      let teamCount = 12;
+      let pendingCount = 1;
+      let activity = { time: "Just now", description: "Project initialized", engineer: "System Control" };
 
-    return rawProjects.map((p, index) => {
-      // Deterministic mock generation based on project ID/index
-      const code = codes[index % codes.length];
-      const client = clients[index % clients.length];
-      const status = index === 0 ? "Active" : statuses[index % statuses.length];
-      const progress = index === 0 ? 82 : Math.max(30, Math.min(100, 100 - (index * 15)));
-      const openIssues = index === 0 ? 2 : (index % 3);
-      const teamCount = 8 + (index * 3);
-      const pendingCount = index === 0 ? 3 : (index % 4);
-      const activity = activities[index % activities.length];
+      // Exact matches for seeded demo data
+      if (p.name.includes("Riverside")) {
+        code = "PRJ-2026-C";
+        client = "Urban Redevelopment Corp";
+        status = "On Hold";
+        progress = 60;
+        teamCount = 18;
+        activity = { time: "1 day ago", description: "MEP clash issue resolved", engineer: "John Smith" };
+      } else if (p.name.includes("Skyline")) {
+        code = "PRJ-2026-A";
+        client = "Apex Development Group";
+        status = "Active";
+        progress = 82;
+        teamCount = 24;
+        activity = { time: "30 minutes ago", description: "Rev 12 approved", engineer: "Rahul Shah" };
+      } else if (p.name.includes("Metro Hub")) {
+        code = "PRJ-2026-B";
+        client = "Metropolitan Transit Authority";
+        status = "Completed";
+        progress = 100;
+        teamCount = 33;
+        activity = { time: "2 hours ago", description: "3 new drawings uploaded", engineer: "Sarah Chen" };
+      } else {
+        // Dynamic fallback for newly created projects
+        // Simple hash/index generator based on name length to vary client/progress/etc.
+        const seed = p.name.length;
+        const clients = ["Apex Development Group", "Global Logistics Partners", "Metropolitan Transit Authority"];
+        client = clients[seed % clients.length];
+        
+        const statuses: ProjectStatus[] = ["Active", "Completed", "On Hold"];
+        status = statuses[seed % statuses.length];
+        
+        progress = 40 + (seed * 7) % 60;
+        teamCount = 5 + (seed * 2) % 20;
+        
+        const engineers = ["Mayank", "Sarah Chen", "John Smith", "Rahul Shah"];
+        const engineer = engineers[seed % engineers.length];
+        
+        activity = { 
+          time: "Just now", 
+          description: "Project record created", 
+          engineer 
+        };
+      }
 
       return {
         ...p,
@@ -252,158 +286,132 @@ function ProjectsIndex() {
 
   const triggerImport = () => {
     toast.info("Select project backup package (.zip / .json) to import.");
-  };
-
-  return (
+  };  return (
     <AppShell>
       {/* PREMIUM ENTERPRISE HEADER */}
       <div className="border-b border-border bg-card shadow-sm select-none">
         <div className="px-8 py-6 space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <FolderKanban className="h-3.5 w-3.5" />
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <svg className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <rect x="3" y="3" width="7" height="9" rx="1"/>
+                  <rect x="14" y="3" width="7" height="5" rx="1"/>
+                  <rect x="14" y="12" width="7" height="9" rx="1"/>
+                  <rect x="3" y="16" width="7" height="5" rx="1"/>
+                </svg>
                 <span>Enterprise Project Registry</span>
               </div>
-              <h1 className="text-3xl font-extrabold tracking-tight mt-1 text-foreground">Projects</h1>
-              <p className="mt-1 text-sm text-muted-foreground font-medium">
+              <h1 className="text-4xl font-serif font-bold tracking-tight mt-0.5 text-foreground">Projects</h1>
+              <p className="text-sm text-muted-foreground font-medium">
                 Workspace coordination deck, document control compliance, and active drawings ledger.
               </p>
             </div>
 
             {/* Header Controls */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="outline" size="sm" className="gap-1.5 border-border bg-card h-9 font-bold text-xs px-4" title="View settings">
+                <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>Settings</span>
+              </Button>
               <CreateProjectDialog
                 trigger={
-                  <Button size="sm" className="gap-1.5 shadow font-semibold text-xs h-9">
-                    <Plus className="h-4 w-4" />
+                  <Button size="sm" className="gap-1.5 shadow font-bold text-xs h-9 bg-black text-white hover:bg-black/90 px-4">
+                    <Plus className="h-3.5 w-3.5" />
                     <span>New Project</span>
                   </Button>
                 }
               />
-              <Button variant="outline" size="sm" className="gap-1.5 border-border bg-card h-9 font-semibold text-xs" title="View settings">
-                <Settings className="h-4 w-4 text-muted-foreground" />
-                <span>Settings</span>
-              </Button>
             </div>
           </div>
 
           {/* WORKSPACE SUMMARY CARDS */}
           <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 pt-2">
-            <SummaryCard label="Active Projects" value={stats.active} icon={<Building2 className="h-4 w-4 text-primary" />} />
-            <SummaryCard label="Archived Projects" value={stats.archived} icon={<HardDrive className="h-4 w-4 text-stone-500" />} />
-            <SummaryCard label="Total Drawings" value={stats.totalDrawings} icon={<Layers className="h-4 w-4 text-indigo-500" />} />
-            <SummaryCard label="Team Members" value={stats.teamMembers} icon={<User className="h-4 w-4 text-emerald-500" />} />
-            <SummaryCard label="Pending Reviews" value={stats.pendingReviews} icon={<Clock className="h-4 w-4 text-amber-500" />} alert={stats.pendingReviews > 0} />
-            <SummaryCard label="Open Issues" value={stats.openIssues} icon={<AlertCircle className="h-4 w-4 text-destructive" />} alert={stats.openIssues > 0} />
+            <SummaryCard label="Active Projects" value={stats.active} icon={<Building2 className="h-4.5 w-4.5 text-emerald-600" />} />
+            <SummaryCard label="Archived Projects" value={stats.archived} icon={<HardDrive className="h-4.5 w-4.5 text-slate-500" />} />
+            <SummaryCard label="Total Drawings" value={stats.totalDrawings} icon={<Layers className="h-4.5 w-4.5 text-indigo-500" />} />
+            <SummaryCard label="Team Members" value={stats.teamMembers} icon={<User className="h-4.5 w-4.5 text-emerald-600" />} />
+            <SummaryCard label="Pending Reviews" value={stats.pendingReviews} icon={<Clock className="h-4.5 w-4.5 text-amber-500" />} />
+            <SummaryCard label="Open Issues" value={stats.openIssues} icon={<AlertCircle className="h-4.5 w-4.5 text-destructive" />} />
           </div>
         </div>
       </div>
 
       {/* WORKSPACE CONTROLS & FILTER BAR */}
-      <div className="bg-muted/10 min-h-screen p-8 space-y-6">
-        <div className="flex flex-col gap-4 bg-card border border-border rounded-lg p-4 shadow-xs">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {/* Search + Filter Group */}
-            <div className="flex items-center gap-2 flex-1 min-w-[280px] max-w-md">
-              {/* Simple Search Input */}
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="global-project-search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search projects, drawings, sheet no..."
-                  className="pl-9 pr-9 h-9 bg-muted/20 border-border text-xs focus-visible:ring-1 focus-visible:ring-primary"
-                />
-                {search && (
-                  <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground">
-                    <X className="h-3.5 w-3.5" />
+      <div className="bg-slate-50/40 min-h-screen p-8 space-y-6">
+        
+        {/* Full-width elegant Search Input & Filter Group */}
+        <div className="bg-card border border-border rounded-lg flex items-center shadow-xs h-11 px-4 select-none">
+          <Search className="h-4 w-4 text-muted-foreground/75 shrink-0" />
+          <Input
+            id="global-project-search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search projects, drawings, sheet no..."
+            className="flex-1 bg-transparent border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 text-xs md:text-sm h-full pl-3 pr-8 placeholder:text-muted-foreground/45 font-medium"
+          />
+          {search && (
+            <button onClick={clearSearch} className="mr-2 p-1 text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          <div className="h-5 w-px bg-border shrink-0 mx-2" />
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="gap-2 h-9 text-xs font-bold text-foreground hover:bg-muted/50 shrink-0 px-3 cursor-pointer">
+                <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>Filter</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground/75">Project Status</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {["All", "Active", "Completed", "On Hold", "Archived"].map((status) => (
+                <DropdownMenuCheckboxItem
+                  key={status}
+                  checked={statusFilter === status}
+                  onCheckedChange={() => setStatusFilter(status as any)}
+                  className="text-xs font-medium"
+                >
+                  {status}
+                </DropdownMenuCheckboxItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground/75">Sort By</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {[
+                { value: "updated", label: "Recently Updated" },
+                { value: "created", label: "Recently Created" },
+                { value: "name", label: "Project Name" },
+                { value: "issues", label: "Open Issues" }
+              ].map((item) => (
+                <DropdownMenuCheckboxItem
+                  key={item.value}
+                  checked={sortBy === item.value}
+                  onCheckedChange={() => setSortBy(item.value as any)}
+                  className="text-xs font-medium"
+                >
+                  {item.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+              {(statusFilter !== "All" || search) && (
+                <>
+                  <DropdownMenuSeparator />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter("All");
+                      setSearch("");
+                    }}
+                    className="w-full text-center py-1.5 text-xs font-bold text-destructive hover:bg-destructive/5 transition-colors rounded-b-sm cursor-pointer"
+                  >
+                    Clear Filters
                   </button>
-                )}
-              </div>
-
-              {/* Filter Dropdown Menu Triggered by Icon */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-9 w-9 border-border bg-muted/20 shrink-0 hover:bg-muted/40 transition-colors" title="Filters">
-                    <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground/75">Project Status</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {["All", "Active", "Completed", "On Hold", "Archived"].map((status) => (
-                    <DropdownMenuCheckboxItem
-                      key={status}
-                      checked={statusFilter === status}
-                      onCheckedChange={() => setStatusFilter(status as any)}
-                      className="text-xs font-medium"
-                    >
-                      {status}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground/75">Sort By</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {[
-                    { value: "updated", label: "Recently Updated" },
-                    { value: "created", label: "Recently Created" },
-                    { value: "name", label: "Project Name" },
-                    { value: "issues", label: "Open Issues" }
-                  ].map((item) => (
-                    <DropdownMenuCheckboxItem
-                      key={item.value}
-                      checked={sortBy === item.value}
-                      onCheckedChange={() => setSortBy(item.value as any)}
-                      className="text-xs font-medium"
-                    >
-                      {item.label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                  {(statusFilter !== "All" || search) && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setStatusFilter("All");
-                          setSearch("");
-                        }}
-                        className="w-full text-center py-1.5 text-xs font-bold text-destructive hover:bg-destructive/5 transition-colors rounded-b-sm"
-                      >
-                        Clear Filters
-                      </button>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            {/* View Mode Switcher (Grid / List only) */}
-            <div className="flex items-center gap-1.5">
-              <div className="flex items-center gap-0.5 border border-border bg-muted/30 p-0.5 rounded-md">
-                <Button
-                  variant={viewMode === "grid" ? "secondary" : "ghost"}
-                  size="icon"
-                  className="h-8 w-8 rounded"
-                  onClick={() => setViewMode("grid")}
-                  title="Grid View"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "list" ? "secondary" : "ghost"}
-                  size="icon"
-                  className="h-8 w-8 rounded"
-                  onClick={() => setViewMode("list")}
-                  title="Compact List"
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* PROJECTS CONTAINER */}
@@ -480,84 +488,111 @@ function ProjectsIndex() {
   );
 }
 
-// Workspace Summary Card
-function SummaryCard({ label, value, icon, alert }: { label: string; value: number; icon: React.ReactNode; alert?: boolean }) {
+// Workspace Summary Card per Reference Image
+function SummaryCard({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
   return (
-    <div className={`bg-card border rounded-lg p-3 flex items-center justify-between gap-3 shadow-xs hover:shadow-sm transition-all ${alert ? "border-amber-500/20 bg-amber-500/[0.02]" : "border-border"}`}>
-      <div className="space-y-1 min-w-0">
-        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block truncate">{label}</span>
-        <span className="text-xl font-bold font-mono text-foreground leading-none">{value}</span>
+    <div className="bg-card border border-border rounded-lg p-4 flex flex-col justify-between h-[96px] hover:shadow-xs transition-shadow">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider">{label}</span>
+        <div className="text-muted-foreground/70 shrink-0">{icon}</div>
       </div>
-      <div className="p-1.5 bg-muted/40 rounded border border-border/40 shrink-0">{icon}</div>
+      <div className="text-3xl font-bold tracking-tight text-foreground select-all mt-1">
+        {value}
+      </div>
     </div>
   );
-}// Grid View Project Card
+}
+
+// Grid View Project Card per Reference Image
 function ProjectGridCard({ project }: { project: EnrichedProject; onDelete: (id: string) => void; deleting: boolean }) {
+  // Determine color matching for the building icon container based on project status
+  const iconTheme = useMemo(() => {
+    switch (project.status) {
+      case "Active":
+        return { bg: "bg-emerald-50 dark:bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400" };
+      case "Completed":
+        return { bg: "bg-slate-100 dark:bg-slate-500/10", text: "text-slate-700 dark:text-slate-400" };
+      case "On Hold":
+        return { bg: "bg-amber-50 dark:bg-amber-500/10", text: "text-amber-600 dark:text-amber-400" };
+      default:
+        return { bg: "bg-stone-50 dark:bg-stone-500/10", text: "text-stone-600 dark:text-stone-400" };
+    }
+  }, [project.status]);
+
   return (
-    <Card className="hover:shadow-md hover:border-primary/35 border-border bg-card transition-all group flex flex-col justify-between">
-      <CardContent className="p-5 space-y-4 flex-1 flex flex-col justify-between">
-        <div className="space-y-3.5">
-          {/* Header Row */}
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="h-8.5 w-8.5 rounded bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <Building2 className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono text-[9px] font-bold bg-muted border border-border/50 px-1.5 py-0.5 rounded text-muted-foreground/80 shrink-0">
-                    {project.projectCode}
-                  </span>
-                  <Link to="/projects/$projectId" params={{ projectId: project.id }} className="font-bold text-sm text-foreground hover:underline truncate block">
-                    {project.name}
-                  </Link>
-                </div>
-                <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5 font-semibold">
-                  <MapPin className="h-3 w-3 text-muted-foreground/70" />
-                  <span className="truncate">{project.location}</span>
-                </div>
+    <Card className="hover:shadow-md hover:border-primary/30 border-border bg-card transition-all group flex flex-col justify-between overflow-hidden">
+      <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+        
+        {/* Header Block */}
+        <div className="flex items-start justify-between gap-2.5">
+          <div className="flex items-start gap-3 min-w-0">
+            {/* Custom Icon Container */}
+            <div className={`h-[38px] w-[38px] rounded-lg flex items-center justify-center shrink-0 ${iconTheme.bg} ${iconTheme.text} transition-transform group-hover:scale-105`}>
+              <Building2 className="h-4.5 w-4.5" />
+            </div>
+            
+            <div className="min-w-0 space-y-0.5">
+              <span className="font-mono text-[9px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                {project.projectCode}
+              </span>
+              <Link to="/projects/$projectId" params={{ projectId: project.id }} className="font-bold text-base text-foreground hover:underline truncate block leading-tight">
+                {project.name}
+              </Link>
+              <div className="text-[11px] text-muted-foreground/75 flex items-center gap-1 font-semibold">
+                <MapPin className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+                <span className="truncate">{project.location}</span>
               </div>
             </div>
-            <Badge variant="outline" className={`text-[9px] font-bold uppercase tracking-wider shrink-0 ${
-              project.status === "Active"
-                ? "bg-emerald-500/5 text-emerald-600 border-emerald-500/20"
-                : project.status === "Completed"
-                ? "bg-blue-500/5 text-blue-600 border-blue-500/20"
-                : project.status === "On Hold"
-                ? "bg-amber-500/5 text-amber-600 border-amber-500/20"
-                : "bg-stone-500/5 text-stone-600 border-stone-500/20"
-            }`}>
-              {project.status}
-            </Badge>
           </div>
+
+          <Badge variant="outline" className={`text-[9px] font-bold uppercase tracking-wider shrink-0 ${
+            project.status === "Active"
+              ? "bg-emerald-500/5 text-emerald-600 border-emerald-500/10"
+              : project.status === "Completed"
+              ? "bg-slate-500/5 text-slate-600 border-slate-500/10"
+              : project.status === "On Hold"
+              ? "bg-amber-500/5 text-amber-600 border-amber-500/10"
+              : "bg-stone-500/5 text-stone-600 border-stone-500/10"
+          }`}>
+            {project.status}
+          </Badge>
         </div>
 
-        {/* Recent Activity Log Box */}
-        <div className="bg-muted/35 border border-border/50 rounded-md p-2.5 text-[11px] space-y-1">
-          <div className="flex items-center justify-between text-[9px] font-bold uppercase text-muted-foreground/75 tracking-wider">
+        {/* Recent Activity Box */}
+        <div className="bg-slate-50/80 dark:bg-muted/30 border border-slate-100 dark:border-border/30 rounded-lg p-3 text-[11px] space-y-2">
+          <div className="flex items-center justify-between text-[9px] font-bold uppercase text-muted-foreground/70 tracking-wider">
             <span className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              Recent Activity
+              <Clock className="h-3.5 w-3.5 text-muted-foreground/60" />
+              <span>Recent Activity</span>
             </span>
-            <span>{project.recentActivity.time}</span>
+            <span className="font-mono text-[10px] text-muted-foreground/50">{project.recentActivity.time}</span>
           </div>
-          <p className="font-semibold text-foreground truncate">{project.recentActivity.description}</p>
-          <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-            <User className="h-3 w-3" />
-            <span>Engineer: {project.recentActivity.engineer}</span>
+          <p className="font-bold text-slate-800 dark:text-foreground/90 truncate">
+            {project.recentActivity.description}
+          </p>
+          <div className="flex items-center gap-2">
+            {/* Engineer Profile Icon */}
+            <div className="h-4.5 w-4.5 rounded-full bg-slate-200 dark:bg-muted text-slate-700 dark:text-muted-foreground flex items-center justify-center font-bold text-[8px] uppercase shrink-0">
+              {project.recentActivity.engineer.split(" ").map(w => w[0]).join("")}
+            </div>
+            <span className="text-[10px] text-muted-foreground font-semibold">
+              Engineer: {project.recentActivity.engineer}
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* Actions */}
-        <div className="pt-2">
-          <Button asChild variant="secondary" size="xs" className="w-full justify-between h-8 text-[11px] font-bold">
-            <Link to="/projects/$projectId" params={{ projectId: project.id }}>
-              <span>Open Project</span>
-              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          </Button>
-        </div>
-      </CardContent>
+      {/* Symmetrical Slicing Footer Trigger */}
+      <Link
+        to="/projects/$projectId"
+        params={{ projectId: project.id }}
+        className="flex items-center justify-between border-t border-border/60 bg-muted/5 dark:bg-card/5 hover:bg-muted/20 dark:hover:bg-muted/10 px-5 py-3.5 transition-colors cursor-pointer"
+      >
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-800 dark:text-foreground/80 group-hover:text-primary transition-colors">
+          Open Project
+        </span>
+        <ArrowRight className="h-4 w-4 text-muted-foreground/75 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+      </Link>
     </Card>
   );
 }

@@ -439,7 +439,24 @@ export async function resolveScanRevision(drawingId: string): Promise<{ drawing:
 export async function getRevisionBlob(revisionId: string): Promise<Blob | null> {
   const r = await getRevision(revisionId);
   if (!r) return null;
-  return getBlob(r.blobKey);
+  const local = await getBlob(r.blobKey);
+  if (local) return local;
+
+  // Fallback: If not in local DB, fetch from public assets (useful for demo files and cross-device QR scanning)
+  if (typeof window !== "undefined") {
+    try {
+      const assetUrl = "/" + encodeURIComponent(r.fileName);
+      const res = await fetch(assetUrl);
+      if (res.ok) {
+        const b = await res.blob();
+        await putBlob(r.blobKey, b);
+        return b;
+      }
+    } catch (e) {
+      console.warn("Failed to fetch seeded drawing from public folder:", e);
+    }
+  }
+  return null;
 }
 
 // ========== issues ==========
@@ -505,7 +522,54 @@ export async function addIssueComment(issueId: string, body: string): Promise<Is
 let seeding: Promise<void> | null = null;
 export async function ensureSeeded(): Promise<void> {
   if (typeof window === "undefined") return;
-  if (kvGet<boolean>(K.seeded)) return;
+  if (kvGet<boolean>(K.seeded)) {
+    // Migration: ensure old mock data cards for Skyline Tower B (p_tower_b) and Metro Hub (p_metro_hub) are deleted, and fresh Riverside DWG is loaded
+    const drawings = kvGet<Drawing[]>(K.drawings) || [];
+    const hasSite = drawings.some(d => d.id === "d_site_01");
+    if (!hasSite) {
+      // Clear key tags so it runs seedDemoData on next check or reload
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("drawai.v1." + K.projects);
+        window.localStorage.removeItem("drawai.v1." + K.drawings);
+        window.localStorage.removeItem("drawai.v1." + K.revisions);
+        window.localStorage.removeItem("drawai.v1." + K.issues);
+        window.localStorage.removeItem("drawai.v1." + K.members);
+        window.localStorage.removeItem("drawai.v1." + K.seeded);
+      }
+      // Re-seed immediately
+      const { seedDemoData } = await import("./seed");
+      await seedDemoData();
+      kvSet(K.seeded, true);
+      return;
+    }
+
+    // Filter projects if somehow mock projects are still present
+    const projects = kvGet<Project[]>(K.projects) || [];
+    const hasMock = projects.some(p => p.id === "p_tower_b" || p.id === "p_metro_hub");
+    if (hasMock) {
+      // 1. Filter projects
+      const filteredProjects = projects.filter(p => p.id !== "p_tower_b" && p.id !== "p_metro_hub");
+      kvSet(K.projects, filteredProjects);
+
+      // 2. Filter drawings
+      const filteredDrawings = drawings.filter(d => d.projectId !== "p_tower_b" && d.projectId !== "p_metro_hub");
+      kvSet(K.drawings, filteredDrawings);
+
+      // 3. Filter revisions
+      const revisions = kvGet<Revision[]>(K.revisions) || [];
+      const filteredRevisions = revisions.filter(r => {
+        const matchingDrawing = drawings.find(d => d.id === r.drawingId);
+        return matchingDrawing && matchingDrawing.projectId !== "p_tower_b" && matchingDrawing.projectId !== "p_metro_hub";
+      });
+      kvSet(K.revisions, filteredRevisions);
+
+      // 4. Filter issues
+      const issues = kvGet<Issue[]>(K.issues) || [];
+      const filteredIssues = issues.filter(i => i.projectId !== "p_tower_b" && i.projectId !== "p_metro_hub");
+      kvSet(K.issues, filteredIssues);
+    }
+    return;
+  }
   if (seeding) return seeding;
   seeding = (async () => {
     const { seedDemoData } = await import("./seed");

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ViewerProps } from "./types";
 
-export default function PdfViewer({ blob, revision }: ViewerProps) {
+export default function PdfViewer({ blob, revision, bgTheme }: ViewerProps) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [msg, setMsg] = useState("Loading PDF…");
@@ -53,8 +53,19 @@ export default function PdfViewer({ blob, revision }: ViewerProps) {
     };
   }, [revision.id]);
 
+  const bgClass =
+    bgTheme === "dark-slate"
+      ? "bg-[#0f172a]"
+      : bgTheme === "charcoal"
+      ? "bg-[#1e1e1e]"
+      : bgTheme === "light-slate"
+      ? "bg-[#f8fafc]"
+      : bgTheme === "warm-white"
+      ? "bg-[#fafaf9]"
+      : "bg-[#0f172a]"; // Default to dark-slate
+
   return (
-    <div className="relative h-full w-full overflow-auto bg-muted p-4">
+    <div className={`relative h-full w-full overflow-auto p-4 transition-colors duration-150 ${bgClass}`}>
       <div ref={ref} className="mx-auto flex max-w-5xl flex-col items-center" />
       {status !== "ready" && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
