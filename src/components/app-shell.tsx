@@ -23,83 +23,62 @@ interface AppShellProps {
 }
 
 export function AppShell({ children, projectId, hideHeader }: AppShellProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
   return (
-    <div className="flex min-h-screen flex-col bg-background relative">
+    <div className="flex min-h-screen flex-col bg-background relative select-none">
       {!hideHeader && (
         <header className="sticky top-0 z-40 border-b border-border bg-card/85 text-foreground backdrop-blur-md supports-[backdrop-filter]:bg-card/75">
-          <div className="mx-auto flex h-16 w-full max-w-[1400px] items-center justify-between px-6 gap-4">
+          <div className="mx-auto flex h-16 w-full max-w-[1400px] items-center justify-between px-6 gap-3 sm:gap-4">
             
-            {/* Brand & Mobile menu button — left */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-9 w-9 p-0 md:hidden cursor-pointer"
-                onClick={() => setMobileMenuOpen(prev => !prev)}
-                title="Toggle menu"
-              >
-                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </Button>
-              
-              <Link
-                to="/dashboard"
-                className="flex items-center gap-2.5 text-foreground"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-950 text-white shadow-sm">
-                  <Ruler className="h-4.5 w-4.5" />
-                </div>
-                <div className="font-serif text-lg font-bold tracking-tight">
-                  Draw<span className="text-indigo-600">AI</span>
-                </div>
-              </Link>
-            </div>
+            {/* Brand Logo — left (icon-only on mobile, full text on sm+) */}
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-2 text-foreground cursor-pointer shrink-0"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-950 text-white shadow-sm">
+                <Ruler className="h-4.5 w-4.5" />
+              </div>
+              <span className="font-serif text-lg font-bold tracking-tight">
+                Draw<span className="text-indigo-600">AI</span>
+              </span>
+            </Link>
 
-            {/* Primary nav — center (always visible on desktop) */}
-            <nav className="hidden items-center gap-1.5 md:flex">
-              <TopLink to="/dashboard" icon={<LayoutDashboard className="h-4 w-4" />}>
+            {/* Primary Nav — center (always visible, horizontally scrollable on mobile) */}
+            <nav className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar scroll-smooth flex-1 justify-center max-w-[200px] xs:max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl py-1 px-1">
+              <TopLink to="/dashboard" icon={<LayoutDashboard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}>
                 Dashboard
               </TopLink>
-              <TopLink to="/projects" icon={<FolderKanban className="h-4 w-4" />}>
+              <TopLink to="/projects" icon={<FolderKanban className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}>
                 Projects
               </TopLink>
               {projectId ? (
                 <>
-                  <div className="mx-1 h-5 w-px bg-border" />
+                  <div className="mx-0.5 sm:mx-1 h-4 sm:h-5 w-px bg-border shrink-0" />
                   <TopLink
                     to="/projects/$projectId"
                     params={{ projectId }}
-                    icon={<FolderKanban className="h-4 w-4" />}
+                    icon={<FolderKanban className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
                   >
                     Register
                   </TopLink>
                   <TopLink
                     to="/handover/$projectId"
                     params={{ projectId }}
-                    icon={<QrCode className="h-4 w-4" />}
+                    icon={<QrCode className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
                   >
                     Handover
-                  </TopLink>
-                  <TopLink
-                    to="/projects/$projectId/settings"
-                    params={{ projectId }}
-                    icon={<Settings className="h-4 w-4" />}
-                  >
-                    Settings
                   </TopLink>
                 </>
               ) : null}
             </nav>
 
             {/* User & Actions — right */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
               <QuickUploadDialog
                 defaultProjectId={projectId}
                 trigger={
                   <Button
                     size="sm"
-                    className="gap-1.5 bg-slate-950 text-white shadow-sm hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200 font-bold text-xs h-9 px-4 rounded-lg cursor-pointer"
+                    className="gap-1.5 bg-slate-950 text-white shadow-sm hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200 font-bold text-xs h-9 px-3 sm:px-4 rounded-lg cursor-pointer"
                   >
                     <Upload className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Quick upload</span>
@@ -124,84 +103,8 @@ export function AppShell({ children, projectId, hideHeader }: AppShellProps) {
         </header>
       )}
 
-      {/* Mobile Drawer Navigation Menu */}
-      {mobileMenuOpen && !hideHeader && (
-        <div className="fixed inset-x-0 top-16 bottom-0 z-40 bg-background/95 backdrop-blur-md md:hidden border-t border-border flex flex-col p-6 animate-in fade-in slide-in-from-top-4 duration-200">
-          <nav className="flex flex-col gap-3">
-            <MobileLink to="/dashboard" icon={<LayoutDashboard className="h-5 w-5" />} onClick={() => setMobileMenuOpen(false)}>
-              Dashboard
-            </MobileLink>
-            <MobileLink to="/projects" icon={<FolderKanban className="h-5 w-5" />} onClick={() => setMobileMenuOpen(false)}>
-              Projects
-            </MobileLink>
-            {projectId ? (
-              <>
-                <div className="my-2 h-px bg-border" />
-                <MobileLink
-                  to="/projects/$projectId"
-                  params={{ projectId }}
-                  icon={<FolderKanban className="h-5 w-5" />}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Register
-                </MobileLink>
-                <MobileLink
-                  to="/handover/$projectId"
-                  params={{ projectId }}
-                  icon={<QrCode className="h-5 w-5" />}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Handover
-                </MobileLink>
-                <MobileLink
-                  to="/projects/$projectId/settings"
-                  params={{ projectId }}
-                  icon={<Settings className="h-5 w-5" />}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Settings
-                </MobileLink>
-              </>
-            ) : null}
-          </nav>
-        </div>
-      )}
-
       <main className="flex-1">{children}</main>
     </div>
-  );
-}
-
-function MobileLink({
-  to,
-  params,
-  icon,
-  children,
-  onClick,
-}: {
-  to: string;
-  params?: Record<string, string>;
-  icon: ReactNode;
-  children: ReactNode;
-  onClick?: () => void;
-}) {
-  const LinkAny = Link as unknown as ComponentType<Record<string, unknown>>;
-  const base =
-    "inline-flex items-center gap-3.5 rounded-lg px-4 py-3 text-base font-semibold text-muted-foreground transition hover:bg-muted/50 hover:text-foreground cursor-pointer w-full";
-  return (
-    <LinkAny
-      to={to}
-      params={params}
-      onClick={onClick}
-      className={base}
-      activeProps={{
-        className:
-          "inline-flex items-center gap-3.5 rounded-lg px-4 py-3 text-base font-bold text-primary bg-muted/80 w-full",
-      }}
-    >
-      {icon}
-      {children}
-    </LinkAny>
   );
 }
 
@@ -218,7 +121,7 @@ function TopLink({
 }) {
   const LinkAny = Link as unknown as ComponentType<Record<string, unknown>>;
   const base =
-    "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition hover:bg-muted/40 hover:text-foreground cursor-pointer";
+    "inline-flex items-center gap-1 sm:gap-2 rounded-md px-1.5 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-sm font-medium text-muted-foreground transition hover:bg-muted/40 hover:text-foreground cursor-pointer shrink-0 whitespace-nowrap";
   return (
     <LinkAny
       to={to}
@@ -226,7 +129,7 @@ function TopLink({
       className={base}
       activeProps={{
         className:
-          "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-bold text-primary bg-muted/65",
+          "inline-flex items-center gap-1 sm:gap-2 rounded-md px-1.5 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-sm font-bold text-primary bg-muted/65 shrink-0 whitespace-nowrap",
       }}
     >
       {icon}

@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, useMemo } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CreateProjectDialog } from "@/components/projects/CreateProjectDialog";
-import { listProjects, listDrawings, listIssues, listRevisions } from "@/repositories";
+import { listProjects, listDrawings, listIssues, listRevisions, setRevisionStatus } from "@/repositories";
 import { listRecents, type RecentEntry } from "@/lib/recents";
 import { toast } from "sonner";
 import {
@@ -102,6 +102,7 @@ function timeAgo(iso: string): string {
 
 function DashboardPage() {
   const { data: projects } = useSuspenseQuery(projectsQuery);
+  const qc = useQueryClient();
   const [recentOpened, setRecentOpened] = useState<RecentEntry[]>([]);
   const [recentEdited, setRecentEdited] = useState<RecentEntry[]>([]);
 
@@ -113,38 +114,59 @@ function DashboardPage() {
   const [scanning, setScanning] = useState(false);
   const [exportingReport, setExportingReport] = useState(false);
 
-  // approvals list with actionable buttons
-  const [pendingApprovals, setPendingApprovals] = useState([
-    { id: "app-1", sheetNo: "A-101", title: "Ground Floor Plan", project: "Medical Center Plaza", rev: "R3", requestedBy: "David Miller", daysAgo: 1, status: "pending" },
-    { id: "app-2", sheetNo: "S-204", title: "Foundation Details", project: "Riverfront Condos", rev: "R2", requestedBy: "Sarah Chen", daysAgo: 2, status: "pending" },
-    { id: "app-3", sheetNo: "M-301", title: "HVAC Layout - L2", project: "Commercial Complex", rev: "R1", requestedBy: "James Wilson", daysAgo: 4, status: "pending" },
-  ]);
+  // Dynamic pending approvals computed from IndexedDB
+  const dbPendingApprovals = useMemo(() => {
+    const list: Array<{
+      id: string;
+      sheetNo: string;
+      title: string;
+      project: string;
+      projectId: string;
+      drawingId: string;
+      rev: string;
+      requestedBy: string;
+      daysAgo: number;
+      status: "pending" | "approved" | "rejected";
+    }> = [];
 
-  // AI insights state with dismiss actions
-  const [aiInsights, setAiInsights] = useState([
-    {
-      id: "insight-1",
-      type: "mismatch",
-      title: "Sheet Title Mismatch",
-      description: "AI scanner flagged that revision drawing text reads 'Ground Floor Plan' but file metadata is named 'Basement Layout'.",
-      project: "Medical Center Plaza",
-      sheet: "A-101",
-    },
-    {
-      id: "insight-2",
-      type: "legacy",
-      title: "Legacy Fonts Flagged",
-      description: "3 drawing sheets in this project are using legacy AutoCAD simplex fonts. Convert to vector Romand to optimize WebGL load.",
-      project: "Riverfront Condos",
-    },
-    {
-      id: "insight-3",
-      type: "outdated",
-      title: "Superseded Print Scan",
-      description: "A QR scan matched a superseded revision on site for Sheet S-204 (Rev 1 instead of active Rev 2).",
-      project: "Commercial Complex",
+    const nowMs = Date.now();
+    for (const p of projects) {
+      for (const d of p.drawings || []) {
+        for (const r of d.revisions || []) {
+          if (r.status === "under_review" || r.status === "draft") {
+            const diffDays = Math.max(1, Math.floor((nowMs - new Date(r.createdAt).getTime()) / 86400000));
+            list.push({
+              id: r.id,
+              sheetNo: d.sheetNo,
+              title: d.title,
+              project: p.name,
+              projectId: p.id,
+              drawingId: d.id,
+              rev: r.rev,
+              requestedBy: r.createdBy || "John Smith",
+              daysAgo: diffDays,
+              status: "pending",
+            });
+          }
+        }
+      }
     }
-  ]);
+    return list;
+  }, [projects]);
+
+  // Track approval action state locally for immediate optimistic visual feedback
+  const [localApprovalsStatus, setLocalApprovalsStatus] = useState<Record<string, "approved" | "rejected">>({});
+
+  // Merge the database reviews with local statuses
+  const pendingApprovals = useMemo(() => {
+    return dbPendingApprovals.map(app => {
+      const local = localApprovalsStatus[app.id];
+      if (local) {
+        return { ...app, status: local };
+      }
+      return app;
+    });
+  }, [dbPendingApprovals, localApprovalsStatus]);
 
   useEffect(() => {
     setRecentOpened(listRecents("opened", 5));
@@ -154,16 +176,30 @@ function DashboardPage() {
   const totalFiles = projects.reduce((sum, p) => sum + p.drawingCount, 0);
   const totalIssues = projects.reduce((sum, p) => sum + p.openIssues, 0);
 
-  const handleApproval = (id: string, action: "approve" | "reject") => {
-    setPendingApprovals(prev =>
-      prev.map(app => (app.id === id ? { ...app, status: action === "approve" ? "approved" : "rejected" } : app))
-    );
-    toast.success(action === "approve" ? "Drawing revision approved" : "Drawing revision rejected");
-  };
+  const handleApproval = async (id: string, action: "approve" | "reject") => {
+    // 1. Optimistic local state update
+    setLocalApprovalsStatus(prev => ({ ...prev, [id]: action === "approve" ? "approved" : "rejected" }));
 
-  const handleResolveInsight = (id: string) => {
-    setAiInsights(prev => prev.filter(i => i.id !== id));
-    toast.success("AI Recommendation processed and resolved");
+    try {
+      if (action === "approve") {
+        await setRevisionStatus(id, "approved");
+        toast.success("Drawing revision approved successfully!");
+      } else {
+        await setRevisionStatus(id, "draft");
+        toast.success("Drawing revision rejected and sent back to draft.");
+      }
+      // 2. Invalidate projects query to refresh database state
+      await qc.invalidateQueries({ queryKey: ["projects"] });
+    } catch (err) {
+      console.error("Failed to update revision status:", err);
+      toast.error("Failed to process drawing review.");
+      // Rollback local status
+      setLocalApprovalsStatus(prev => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
+    }
   };
 
   const triggerComplianceScan = () => {
@@ -459,15 +495,25 @@ function DashboardPage() {
                   }`}
                 >
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-foreground bg-muted px-1.5 py-0.5 rounded border border-border">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Link
+                        to="/projects/$projectId/drawings/$drawingId"
+                        params={{ projectId: app.projectId, drawingId: app.drawingId }}
+                        className="font-mono text-xs font-bold text-foreground bg-muted hover:bg-muted/80 hover:text-primary px-1.5 py-0.5 rounded border border-border transition-colors cursor-pointer"
+                      >
                         {app.sheetNo}
-                      </span>
-                      <span className="text-sm font-semibold text-foreground">{app.title}</span>
+                      </Link>
+                      <Link
+                        to="/projects/$projectId/drawings/$drawingId"
+                        params={{ projectId: app.projectId, drawingId: app.drawingId }}
+                        className="text-sm font-semibold text-foreground hover:underline hover:text-primary transition-colors cursor-pointer"
+                      >
+                        {app.title}
+                      </Link>
                       <Badge variant="outline" className="font-mono text-[9px] font-bold py-0">{app.rev}</Badge>
                     </div>
                     <p className="text-[11px] text-muted-foreground font-medium">
-                      Project: <span className="text-foreground font-semibold">{app.project}</span> · Requested by {app.requestedBy} · {app.daysAgo === 1 ? "1 day ago" : `${app.daysAgo} days ago`}
+                      Project: <Link to="/projects/$projectId" params={{ projectId: app.projectId }} className="text-foreground hover:underline font-semibold">{app.project}</Link> · Requested by {app.requestedBy} · {app.daysAgo === 1 ? "1 day ago" : `${app.daysAgo} days ago`}
                     </p>
                   </div>
 
@@ -477,14 +523,14 @@ function DashboardPage() {
                         <Button
                           variant="outline"
                           size="xs"
-                          className="h-7 text-xs border-border hover:bg-muted font-bold"
+                          className="h-7 text-xs border-border hover:bg-muted font-bold cursor-pointer"
                           onClick={() => handleApproval(app.id, "reject")}
                         >
                           Reject
                         </Button>
                         <Button
                           size="xs"
-                          className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                          className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer"
                           onClick={() => handleApproval(app.id, "approve")}
                         >
                           Approve
@@ -546,7 +592,7 @@ function DashboardPage() {
                       </div>
                     </div>
                   </div>
-                  <Button asChild size="sm" className="w-full h-8 gap-1 text-xs font-bold mt-2">
+                  <Button asChild size="sm" className="w-full h-8 gap-1 text-xs font-bold mt-2 cursor-pointer">
                     <Link to="/projects/$projectId/drawings/$drawingId" params={{ projectId: highlightDrawing.projectId, drawingId: highlightDrawing.id }}>
                       <Eye className="h-3.5 w-3.5" />
                       <span>Open in Viewer</span>
@@ -575,30 +621,41 @@ function DashboardPage() {
                   Compliance rating based on active sheets, revision cycle frequency, and outstanding issues.
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant={projectFilter === "all" ? "secondary" : "ghost"}
+                    size="xs"
+                    onClick={() => setProjectFilter("all")}
+                    className="text-[10px] px-2.5 h-7 font-bold cursor-pointer"
+                  >
+                    All
+                  </Button>
+                  <Button
+                    variant={projectFilter === "critical" ? "secondary" : "ghost"}
+                    size="xs"
+                    onClick={() => setProjectFilter("critical")}
+                    className="text-[10px] px-2.5 h-7 font-bold cursor-pointer"
+                  >
+                    Needs Attention
+                  </Button>
+                  <Button
+                    variant={projectFilter === "active" ? "secondary" : "ghost"}
+                    size="xs"
+                    onClick={() => setProjectFilter("active")}
+                    className="text-[10px] px-2.5 h-7 font-bold cursor-pointer"
+                  >
+                    Active
+                  </Button>
+                </div>
                 <Button
-                  variant={projectFilter === "all" ? "secondary" : "ghost"}
-                  size="xs"
-                  onClick={() => setProjectFilter("all")}
-                  className="text-[10px] px-2.5 h-7 font-bold"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground cursor-pointer"
+                  onClick={() => setIsHealthExpanded(prev => !prev)}
+                  title={isHealthExpanded ? "Collapse panel" : "Expand panel"}
                 >
-                  All
-                </Button>
-                <Button
-                  variant={projectFilter === "critical" ? "secondary" : "ghost"}
-                  size="xs"
-                  onClick={() => setProjectFilter("critical")}
-                  className="text-[10px] px-2.5 h-7 font-bold"
-                >
-                  Needs Attention
-                </Button>
-                <Button
-                  variant={projectFilter === "active" ? "secondary" : "ghost"}
-                  size="xs"
-                  onClick={() => setProjectFilter("active")}
-                  className="text-[10px] px-2.5 h-7 font-bold"
-                >
-                  Active
+                  {isHealthExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </Button>
               </div>
             </CardHeader>
@@ -637,8 +694,8 @@ function DashboardPage() {
                             )}
                           </td>
                           <td className="py-3 px-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden w-20">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden w-16">
                                 <div
                                   className={`h-full rounded-full ${
                                     p.health === "danger"
@@ -650,6 +707,7 @@ function DashboardPage() {
                                   style={{ width: `${p.score}%` }}
                                 />
                               </div>
+                              <span className="font-mono text-[10px] font-bold text-foreground w-8 text-right">{p.score}%</span>
                             </div>
                           </td>
                         </tr>

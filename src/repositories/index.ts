@@ -525,7 +525,7 @@ export async function ensureSeeded(): Promise<void> {
   if (kvGet<boolean>(K.seeded)) {
     // Migration: ensure old mock data cards for Skyline Tower B (p_tower_b) and Metro Hub (p_metro_hub) are deleted, and fresh Riverside DWG is loaded
     const drawings = kvGet<Drawing[]>(K.drawings) || [];
-    const hasSite = drawings.some(d => d.id === "d_site_01");
+    const hasSite = drawings.some(d => d.id === "d_site_02");
     if (!hasSite) {
       // Clear key tags so it runs seedDemoData on next check or reload
       if (typeof window !== "undefined") {

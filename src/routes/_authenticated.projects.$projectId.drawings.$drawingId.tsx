@@ -27,6 +27,7 @@ import {
   MousePointer2, Hand, Move, Copy, RotateCw, Scaling, Ruler,
   Square, Compass, SkipBack, SkipForward, Loader2, Circle,
   Minus, Spline, RectangleHorizontal, Slash, SlidersHorizontal, Info,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 
 const drawingQuery = (id: string) => ({
@@ -81,7 +82,12 @@ function DrawingPage() {
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [bgTheme, setBgTheme] = useState<"dark-slate" | "charcoal" | "light-slate" | "warm-white">("dark-slate");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.innerWidth >= 1024;
+    }
+    return true;
+  });
 
   useEffect(() => {
     if (mode !== "edit") {
@@ -380,10 +386,6 @@ function DrawingPage() {
                 <Download className="h-3.5 w-3.5 sm:mr-1.5" />
                 <span className="hidden sm:inline">Export</span>
               </Button>
-              {/* Sidebar toggle button for mobile */}
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0 lg:hidden cursor-pointer" onClick={() => setSidebarOpen(prev => !prev)} title="Show info panel">
-                <Info className="h-4 w-4 text-muted-foreground" />
-              </Button>
             </div>
           </div>
         </header>
@@ -405,14 +407,26 @@ function DrawingPage() {
                 No revision yet — upload a file to start.
               </div>
             )}
+
+            {/* Floating Sidebar toggle button — positioned relative to the drawing canvas */}
+            <div className="absolute top-4 right-4 z-20">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-full bg-slate-900/80 hover:bg-slate-800 text-white shadow-md border border-slate-700/50 cursor-pointer backdrop-blur-xs flex items-center justify-center transition-all duration-200"
+                onClick={() => setSidebarOpen(prev => !prev)}
+                title={sidebarOpen ? "Hide info panel" : "Show info panel"}
+              >
+                {sidebarOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
 
           <aside className={`
-            absolute lg:static top-0 right-0 z-30 h-full w-80 
+            absolute lg:static top-0 right-0 z-30 h-full 
             border-l border-border bg-card shadow-lg lg:shadow-none
-            transition-transform duration-200 ease-in-out overflow-y-auto
-            ${sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}
-            lg:block
+            transition-all duration-200 ease-in-out overflow-y-auto
+            ${sidebarOpen ? "translate-x-0 w-80 opacity-100" : "translate-x-full lg:translate-x-full w-0 opacity-0 pointer-events-none border-l-0"}
           `}>
             <Tabs defaultValue="history" className="w-full">
               <TabsList className="grid w-full grid-cols-3 rounded-none border-b border-border">

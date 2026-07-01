@@ -111,6 +111,19 @@ export async function seedDemoData(): Promise<void> {
     ]
   );
 
+  makeDrawing(
+    "p_riverside",
+    "Floor Plans",
+    "SITE-02",
+    "Structural Layout Details",
+    "Structural",
+    "DWG",
+    "FOR SITE 16-04-2026.dwg",
+    [
+      { rev: "R1", n: 1, status: "under_review", log: "Foundation rebar updates", daysAgo: 2 }
+    ]
+  );
+
   kvSet("drawings", drawings);
   kvSet("revisions", revisions);
 

@@ -45,10 +45,10 @@ function patchCadDataFontsFetch() {
   const realFetch = window.fetch.bind(window);
   window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-    if (url && url.includes("cad-datafonts")) {
+    if (url && (url.includes("cad-data/fonts") || url.includes("cad-datafonts"))) {
       const file = url.split("/").pop() || "fonts.json";
-      // Add cache-busting to bypass cached CORS headers
-      return realFetch(`${CAD_DATA_BASE}fonts/${file}?cb=${Date.now()}`, init);
+      // Redirect to Github raw CDN which handles CORS headers correctly and bypasses jsDelivr cache mismatch
+      return realFetch(`https://raw.githubusercontent.com/mlightcad/cad-data/master/fonts/${file}?cb=${Date.now()}`, init);
     }
     return realFetch(input as RequestInfo, init);
   }) as typeof window.fetch;
