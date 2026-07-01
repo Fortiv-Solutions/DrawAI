@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useState, type ComponentType, ReactNode } from "react";
 import { getCurrentUser } from "@/repositories";
 import { QuickUploadDialog } from "@/components/QuickUploadDialog";
