@@ -26,7 +26,7 @@ import {
   ZoomIn, ZoomOut, Undo, Redo, Maximize2, ClipboardCheck, X,
   MousePointer2, Hand, Move, Copy, RotateCw, Scaling, Ruler,
   Square, Compass, SkipBack, SkipForward, Loader2, Circle,
-  Minus, Spline, RectangleHorizontal, Slash, SlidersHorizontal,
+  Minus, Spline, RectangleHorizontal, Slash, SlidersHorizontal, Info,
 } from "lucide-react";
 
 const drawingQuery = (id: string) => ({
@@ -80,12 +80,13 @@ function DrawingPage() {
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
-  const [bgTheme, setBgTheme] = useState<"dark-slate" | "charcoal" | "light-slate" | "warm-white">(
-    mode === "edit" ? "dark-slate" : "light-slate"
-  );
+  const [bgTheme, setBgTheme] = useState<"dark-slate" | "charcoal" | "light-slate" | "warm-white">("dark-slate");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    setBgTheme(mode === "edit" ? "dark-slate" : "light-slate");
+    if (mode !== "edit") {
+      setBgTheme("dark-slate");
+    }
   }, [mode]);
 
   useEffect(() => {
@@ -332,52 +333,63 @@ function DrawingPage() {
   return (
     <AppShell projectId={projectId} hideHeader>
       <div className="flex h-screen flex-col">
-        <header className="border-b border-border bg-card">
-          <div className="flex items-center gap-4 px-6 py-3">
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/projects/$projectId" params={{ projectId }}>
-                <ArrowLeft className="mr-2 h-4 w-4" />Register
-              </Link>
-            </Button>
-            <div className="flex-1">
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-xs text-muted-foreground">{d.sheetNo}</span>
-                <h1 className="text-base font-semibold">{d.title}</h1>
-                {activeRev && <StatusPill status={activeRev.status} />}
-                <Badge variant="outline" className="font-mono text-xs">{activeRev?.format ?? d.format}</Badge>
-                <Badge variant="outline" className="font-mono text-xs">{activeRev?.rev ?? d.currentRev}</Badge>
-              </div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                {d.discipline} · Updated {new Date(d.updatedAt).toLocaleString()}
+        <header className="border-b border-border bg-card select-none">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-3">
+            <div className="flex items-center gap-3">
+              <Button asChild variant="ghost" size="sm" className="h-8 w-8 p-0 sm:w-auto sm:px-3 cursor-pointer">
+                <Link to="/projects/$projectId" params={{ projectId }}>
+                  <ArrowLeft className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Register</span>
+                </Link>
+              </Button>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs text-muted-foreground font-semibold shrink-0">{d.sheetNo}</span>
+                  <h1 className="text-sm sm:text-base font-bold text-foreground truncate max-w-[160px] sm:max-w-xs">{d.title}</h1>
+                  {activeRev && <StatusPill status={activeRev.status} />}
+                  <Badge variant="outline" className="font-mono text-[9px] sm:text-xs shrink-0">{activeRev?.format ?? d.format}</Badge>
+                  <Badge variant="outline" className="font-mono text-[9px] sm:text-xs shrink-0">{activeRev?.rev ?? d.currentRev}</Badge>
+                </div>
+                <div className="mt-0.5 text-[10px] sm:text-xs text-muted-foreground truncate">
+                  {d.discipline} · Updated {new Date(d.updatedAt).toLocaleString()}
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+
+            <div className="flex items-center gap-2 mt-1 sm:mt-0 justify-end">
               {activeRev && activeRev.status !== "superseded" && (
-                <Button asChild size="sm">
+                <Button asChild size="sm" className="h-8 font-bold text-xs cursor-pointer">
                   <Link to="/projects/$projectId/drawings/$drawingId" params={{ projectId, drawingId }} search={{ mode: "edit" }}>
                     Edit
                   </Link>
                 </Button>
               )}
               {activeRev?.status === "draft" && (
-                <Button size="sm" variant="outline" onClick={submitReview}>
-                  <ClipboardCheck className="mr-2 h-4 w-4" />Submit for review
+                <Button size="sm" variant="outline" onClick={submitReview} className="h-8 font-bold text-xs cursor-pointer">
+                  <ClipboardCheck className="mr-1.5 h-3.5 w-3.5" />
+                  <span>Submit</span>
                 </Button>
               )}
               {activeRev?.status === "under_review" && (
-                <Button size="sm" onClick={approve}>
-                  <Check className="mr-2 h-4 w-4" />Approve
+                <Button size="sm" onClick={approve} className="h-8 font-bold text-xs cursor-pointer">
+                  <Check className="mr-1.5 h-3.5 w-3.5" />
+                  <span>Approve</span>
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={() => setExportOpen(true)} disabled={!activeRev}>
-                <Download className="mr-2 h-4 w-4" />Export
+              <Button variant="outline" size="sm" onClick={() => setExportOpen(true)} disabled={!activeRev} className="h-8 font-bold text-xs cursor-pointer" title="Export drawing">
+                <Download className="h-3.5 w-3.5 sm:mr-1.5" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+              {/* Sidebar toggle button for mobile */}
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0 lg:hidden cursor-pointer" onClick={() => setSidebarOpen(prev => !prev)} title="Show info panel">
+                <Info className="h-4 w-4 text-muted-foreground" />
               </Button>
             </div>
           </div>
         </header>
 
-        <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 relative">
+        <div className="flex flex-1 overflow-hidden relative">
+          <div className="flex-1 relative bg-[#0f172a] h-full w-full">
             {activeRev ? (
               <ViewerHost
                 revision={activeRev}
@@ -395,7 +407,13 @@ function DrawingPage() {
             )}
           </div>
 
-          <aside className="w-80 overflow-y-auto border-l border-border bg-card">
+          <aside className={`
+            absolute lg:static top-0 right-0 z-30 h-full w-80 
+            border-l border-border bg-card shadow-lg lg:shadow-none
+            transition-transform duration-200 ease-in-out overflow-y-auto
+            ${sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}
+            lg:block
+          `}>
             <Tabs defaultValue="history" className="w-full">
               <TabsList className="grid w-full grid-cols-3 rounded-none border-b border-border">
                 <TabsTrigger value="history">History</TabsTrigger>
@@ -474,6 +492,14 @@ function DrawingPage() {
               </TabsContent>
             </Tabs>
           </aside>
+
+          {/* Mobile backdrop dim when sidebar is open */}
+          {sidebarOpen && (
+            <div 
+              className="absolute inset-0 bg-black/35 backdrop-blur-xs z-20 lg:hidden cursor-pointer"
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
         </div>
 
         {activeRev && (

@@ -34,6 +34,7 @@ export default function PdfViewer({ blob, revision, bgTheme }: ViewerProps) {
           canvas.width = scaled.width;
           canvas.height = scaled.height;
           canvas.style.maxWidth = "100%";
+          canvas.style.height = "auto";
           canvas.style.boxShadow = "0 2px 12px rgba(0,0,0,0.15)";
           canvas.style.background = "#fff";
           canvas.style.marginBottom = "16px";
